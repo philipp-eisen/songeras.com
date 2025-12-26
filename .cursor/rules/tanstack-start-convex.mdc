@@ -1,0 +1,185 @@
+---
+description: Best practices for using TanStack Start with Convex and React Query
+globs: src/**/*.ts,src/**/*.tsx
+---
+
+# TanStack Start + Convex + React Query
+
+This project uses TanStack Start with Convex via React Query for SSR-friendly, live-updating queries.
+
+## Architecture Overview
+
+- **ConvexQueryClient** wraps the Convex client and integrates with TanStack Query
+- **Route loaders** prefetch data for SSR and hover-prefetch
+- **useSuspenseQuery** handles data fetching in components with automatic suspense
+- **Mutations** remain with `convex/react` (coexists with React Query reads)
+
+## QueryClient Configuration
+
+The QueryClient in `src/router.tsx` is configured with:
+
+```typescript
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      queryKeyHashFn: convexQueryClient.hashFn(),
+      queryFn: convexQueryClient.queryFn(),
+      staleTime: Infinity, // Convex pushes updates; data is never stale
+      gcTime: 5 * 60 * 1000, // Keep subscriptions for 5 minutes after unmount
+    },
+  },
+})
+```
+
+## Query Options Pattern
+
+Define query option factories in `src/lib/convex-queries.ts`:
+
+```typescript
+import { convexQuery } from '@convex-dev/react-query'
+import { api } from '../../convex/_generated/api'
+import type { Id } from '../../convex/_generated/dataModel'
+
+// Parameterless query
+export const myListQuery = () => convexQuery(api.module.list, {})
+
+// Query with parameters
+export const myItemQuery = (id: Id<'items'>) =>
+  convexQuery(api.module.get, { id })
+```
+
+## Route Loaders
+
+Add loaders to routes for SSR and prefetching:
+
+```typescript
+import { createFileRoute } from '@tanstack/react-router'
+import { myListQuery } from '@/lib/convex-queries'
+
+export const Route = createFileRoute('/my-route')({
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData(myListQuery())
+  },
+  component: MyComponent,
+})
+```
+
+For conditional prefetching based on loaded data:
+
+```typescript
+loader: async ({ context, params }) => {
+  const item = await context.queryClient.ensureQueryData(
+    myItemQuery(params.id),
+  )
+  // Prefetch related data (don't await - fire and forget)
+  if (item.hasDetails) {
+    context.queryClient.prefetchQuery(myDetailsQuery(params.id))
+  }
+}
+```
+
+## Component Data Fetching
+
+### Primary pattern: useSuspenseQuery
+
+Use `useSuspenseQuery` for route-critical data (loader ensures it's already cached):
+
+```typescript
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { myListQuery } from '@/lib/convex-queries'
+
+function MyComponent() {
+  const { data } = useSuspenseQuery(myListQuery())
+  // data is always defined - no loading state needed
+  return <div>{data.map(...)}</div>
+}
+```
+
+### Secondary pattern: useQuery for conditional data
+
+Use `useQuery` for optional/toggled data:
+
+```typescript
+import { useQuery } from '@tanstack/react-query'
+
+function MyComponent({ showDetails, itemId }) {
+  const { data, isPending } = useQuery(
+    showDetails ? myDetailsQuery(itemId) : { queryKey: ['skip'], enabled: false }
+  )
+  
+  if (isPending) return <Loading />
+  return <Details data={data} />
+}
+```
+
+## Mutations
+
+Keep using `useMutation` from `convex/react` - it coexists with React Query:
+
+```typescript
+import { useMutation } from 'convex/react'
+import { api } from '../../convex/_generated/api'
+
+function MyComponent() {
+  const createItem = useMutation(api.module.create)
+  
+  const handleCreate = async () => {
+    await createItem({ name: 'New Item' })
+    // No need to invalidate - Convex subscriptions auto-update
+  }
+}
+```
+
+## Key Differences from Plain Convex React
+
+| Plain Convex React | TanStack Start + React Query |
+|-------------------|------------------------------|
+| `useQuery(api.x.y, {})` returns `undefined` while loading | `useSuspenseQuery(xQuery())` suspends, data always defined |
+| Manual loading states (`if (data === undefined)`) | Route `pendingComponent` handles loading |
+| No SSR data fetching | Route `loader` + `ensureQueryData` enables SSR |
+| No prefetching | Hover prefetch via `defaultPreload: 'intent'` |
+
+## SSR Authentication
+
+Auth token is automatically set for SSR in `__root.tsx`:
+
+```typescript
+beforeLoad: async (ctx) => {
+  const token = await getAuth()
+  if (token) {
+    ctx.context.convexQueryClient.serverHttpClient?.setAuth(token)
+  }
+  return { isAuthenticated: !!token, token }
+}
+```
+
+## Common Patterns
+
+### Remove loading state checks
+
+Before:
+```typescript
+const data = useQuery(api.x.list, {})
+if (data === undefined) return <Loading />
+```
+
+After:
+```typescript
+const { data } = useSuspenseQuery(listQuery())
+// No loading check needed - suspense handles it
+```
+
+### Handle null results (not found)
+
+```typescript
+const { data: item } = useSuspenseQuery(itemQuery(id))
+
+if (item === null) {
+  return <NotFound />
+}
+// item is now typed as non-null
+```
+
+### Real-time updates
+
+No special handling needed - Convex subscriptions automatically push updates through React Query, re-rendering components when data changes.
