@@ -1,5 +1,6 @@
-import { House, MusicNotes, Gear } from '@phosphor-icons/react'
+import { Gear, House, MusicNotes } from '@phosphor-icons/react'
 import { Link } from '@tanstack/react-router'
+import type { Icon } from '@phosphor-icons/react'
 import {
   Sidebar,
   SidebarContent,
@@ -13,9 +14,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import type { Icon } from '@phosphor-icons/react'
 
-const menuItems: { title: string; url: string; icon: Icon }[] = [
+const menuItems: Array<{ title: string; url: string; icon: Icon }> = [
   {
     title: 'Home',
     url: '/',

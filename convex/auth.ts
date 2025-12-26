@@ -1,6 +1,7 @@
 import { createClient } from '@convex-dev/better-auth'
 import { convex } from '@convex-dev/better-auth/plugins'
 import { betterAuth } from 'better-auth'
+import { anonymous } from 'better-auth/plugins'
 import { components } from './_generated/api'
 import { query } from './_generated/server'
 import authConfig from './auth.config'
@@ -33,6 +34,10 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     plugins: [
       // The Convex plugin is required for Convex compatibility
       convex({ authConfig }),
+      // Anonymous plugin for guest sign-in (sidecar players joining without Spotify)
+      anonymous({
+        emailDomainName: 'guest.songgame.local',
+      }),
     ],
   })
 }
