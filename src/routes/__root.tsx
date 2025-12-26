@@ -17,6 +17,12 @@ import type { ConvexQueryClient } from '@convex-dev/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { getToken } from '@/lib/auth-server'
 import { authClient } from '@/lib/auth-client'
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import { AppSidebar } from '@/components/app-sidebar'
 
 // Get auth information for SSR using available cookies
 const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
@@ -91,7 +97,15 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="bg-neutral-950 text-neutral-50">
-        {children}
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+              <SidebarTrigger className="-ml-1" />
+            </header>
+            <main className="flex-1 p-4">{children}</main>
+          </SidebarInset>
+        </SidebarProvider>
         <Toaster />
         <TanStackDevtools
           config={{

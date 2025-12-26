@@ -5,12 +5,13 @@ import { ConvexQueryClient } from '@convex-dev/react-query'
 import { routeTree } from './routeTree.gen'
 import { PendingFallback } from './components/pending-fallback'
 
+const convexUrl = import.meta.env.VITE_CONVEX_URL
+
 export function getRouter() {
   if (typeof document !== 'undefined') {
     notifyManager.setScheduler(window.requestAnimationFrame)
   }
 
-  const convexUrl = import.meta.env.VITE_CONVEX_URL
   if (!convexUrl) {
     throw new Error('VITE_CONVEX_URL is not set')
   }

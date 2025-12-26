@@ -11,7 +11,7 @@ function LandingPage() {
 
   if (isPending) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <Card className="w-full max-w-sm">
           <CardContent className="flex items-center justify-center py-8">
             <div className="text-muted-foreground">Loading...</div>
@@ -22,7 +22,7 @@ function LandingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex h-full items-center justify-center">
       {session ? <UserStatus user={session.user} /> : <SpotifyLogin />}
     </div>
   )
