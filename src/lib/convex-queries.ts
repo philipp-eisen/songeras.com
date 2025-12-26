@@ -33,6 +33,9 @@ export const getAllTimelinesQuery = (gameId: Id<'games'>) =>
 export const getCurrentRoundCardQuery = (gameId: Id<'games'>) =>
   convexQuery(api.timelines.getCurrentRoundCard, { gameId })
 
+export const getCurrentRoundSongPreviewQuery = (gameId: Id<'games'>) =>
+  convexQuery(api.timelines.getCurrentRoundSongPreview, { gameId })
+
 // ===========================================
 // Auth queries
 // ===========================================

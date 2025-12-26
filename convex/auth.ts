@@ -29,6 +29,14 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       spotify: {
         clientId: process.env.SPOTIFY_CLIENT_ID as string,
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET as string,
+        // Request streaming scopes for Web Playback SDK
+        scope: [
+          'user-read-email',
+          'user-read-private',
+          'streaming',
+          'user-modify-playback-state',
+          'user-read-playback-state',
+        ],
       },
     },
     plugins: [

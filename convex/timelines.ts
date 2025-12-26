@@ -238,6 +238,74 @@ export const getAllTimelines = query({
 })
 
 /**
+ * Get the current round's song preview for playback
+ * Available during awaitingPlacement, awaitingReveal phases (for active player to listen)
+ * Does NOT reveal title/artist/year until revealed phase
+ */
+export const getCurrentRoundSongPreview = query({
+  args: {
+    gameId: v.id('games'),
+  },
+  returns: v.union(
+    v.object({
+      previewUrl: v.optional(v.string()),
+      spotifyUri: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return null
+    }
+
+    const game = await ctx.db.get("games", args.gameId)
+    if (!game) {
+      return null
+    }
+
+    // Available during placement and reveal phases
+    if (game.phase !== 'awaitingPlacement' && game.phase !== 'awaitingReveal' && game.phase !== 'revealed') {
+      return null
+    }
+
+    if (!game.currentRound) {
+      return null
+    }
+
+    // Verify access
+    const isHost = game.hostUserId === identity.subject
+    if (!isHost) {
+      const playerSeat = await ctx.db
+        .query('gamePlayers')
+        .withIndex('by_gameId_and_userId', (q) =>
+          q.eq('gameId', args.gameId).eq('userId', identity.subject),
+        )
+        .first()
+
+      if (!playerSeat) {
+        return null
+      }
+    }
+
+    const card = await ctx.db.get("gameCards", game.currentRound.cardId)
+    if (!card) {
+      return null
+    }
+
+    const song = await ctx.db.get("songs", card.songId)
+    if (!song) {
+      return null
+    }
+
+    return {
+      previewUrl: song.previewUrl,
+      spotifyUri: song.spotifyUri,
+    }
+  },
+})
+
+/**
  * Get the current round's card info (only available after reveal)
  */
 export const getCurrentRoundCard = query({

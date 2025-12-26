@@ -8,18 +8,21 @@ import type { FunctionReturnType } from 'convex/server'
 import {
   getAllTimelinesQuery,
   getCurrentRoundCardQuery,
+  getCurrentRoundSongPreviewQuery,
   getGameQuery,
 } from '@/lib/convex-queries'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { SpotifyPlayer } from '@/components/spotify-player'
 
 // Type for the game query result
 type GameData = NonNullable<FunctionReturnType<typeof api.games.get>>
 type PlayerData = GameData['players'][0]
 type TimelineData = NonNullable<FunctionReturnType<typeof api.timelines.getAllTimelines>>[0]
 type CardData = NonNullable<FunctionReturnType<typeof api.timelines.getCurrentRoundCard>>
+
 
 export const Route = createFileRoute('/play/$gameId')({
   loader: async ({ context, params }) => {
@@ -76,7 +79,7 @@ function GamePage() {
 
 function LobbyView({ game }: { game: GameData }) {
   const navigate = useNavigate()
-  const isHost = game.players.some((p) => p.isHostSeat && p.isCurrentUser)
+  const isHost = game.isCurrentUserHost
 
   const startGame = useMutation(api.games.start)
   const addLocalPlayer = useMutation(api.games.addLocalPlayer)
@@ -236,17 +239,31 @@ function LobbyView({ game }: { game: GameData }) {
 function GameView({ game }: { game: GameData }) {
   const { data: timelines } = useSuspenseQuery(getAllTimelinesQuery(game._id))
   const { data: currentCard } = useQuery(getCurrentRoundCardQuery(game._id))
+  const { data: songPreview } = useQuery(getCurrentRoundSongPreviewQuery(game._id))
 
-  const isHost = game.hostUserId === game.players.find((p) => p.isCurrentUser)?.userId ||
-    game.players.some((p) => p.isHostSeat && p.isCurrentUser)
+  const isHost = game.isCurrentUserHost
 
   const activePlayer = game.players.find((p) => p.seatIndex === game.currentTurnSeatIndex)
   const isActivePlayer =
     activePlayer?.isCurrentUser ||
     (activePlayer?.kind === 'local' && isHost)
 
+  // Show song player during placement phases
+  const showSongPlayer = 
+    game.phase === 'awaitingPlacement' || 
+    game.phase === 'awaitingReveal' || 
+    game.phase === 'revealed'
+
   return (
     <div className="space-y-4">
+      {/* Spotify Player - Show during active round */}
+      {showSongPlayer && songPreview && (
+        <SpotifyPlayer 
+          spotifyUri={songPreview.spotifyUri} 
+          previewUrl={songPreview.previewUrl} 
+        />
+      )}
+
       {/* Current Turn Info */}
       <Card>
         <CardHeader>

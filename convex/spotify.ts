@@ -132,6 +132,72 @@ async function fetchAllPlaylistTracks(
 }
 
 // ===========================================
+// Public action: Get Spotify Access Token for Playback
+// ===========================================
+
+/**
+ * Get a valid Spotify access token for the current user.
+ * Refreshes the token if expired.
+ * Used by the client for Web Playback SDK.
+ */
+export const getAccessToken = action({
+  args: {},
+  returns: v.union(
+    v.object({
+      accessToken: v.string(),
+      expiresAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (
+    ctx,
+  ): Promise<{ accessToken: string; expiresAt: number } | null> => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      return null
+    }
+
+    const userId = identity.subject
+
+    // Get the Spotify account tokens
+    const account = await ctx.runQuery(
+      internal.spotifyInternal.getSpotifyAccount,
+      { userId },
+    )
+
+    if (!account || !account.accessToken || !account.refreshToken) {
+      return null
+    }
+
+    let accessToken = account.accessToken
+    let expiresAt = account.accessTokenExpiresAt ?? 0
+
+    // Check if token is expired and refresh if needed
+    const now = Date.now()
+    if (expiresAt < now) {
+      console.log('Spotify token expired, refreshing...')
+      const newTokens = await refreshSpotifyToken(account.refreshToken)
+
+      accessToken = newTokens.access_token
+      expiresAt = now + newTokens.expires_in * 1000
+
+      // Update stored tokens
+      await ctx.runMutation(internal.spotifyInternal.updateSpotifyTokens, {
+        userId,
+        accessToken: newTokens.access_token,
+        accessTokenExpiresAt: expiresAt,
+        refreshToken: newTokens.refresh_token,
+      })
+    }
+
+    return {
+      accessToken,
+      expiresAt,
+    }
+  },
+})
+
+// ===========================================
 // Public action: Import Spotify Playlist
 // ===========================================
 
