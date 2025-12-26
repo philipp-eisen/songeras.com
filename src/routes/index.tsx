@@ -1,11 +1,29 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { authClient } from '@/lib/auth-client'
+import { SpotifyLogin } from '@/components/spotify-login'
+import { UserStatus } from '@/components/user-status'
+import { Card, CardContent } from '@/components/ui/card'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({ component: LandingPage })
 
-function App() {
+function LandingPage() {
+  const { data: session, isPending } = authClient.useSession()
+
+  if (isPending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Card className="w-full max-w-sm">
+          <CardContent className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Loading...</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div>
-      <h1>Hello World</h1>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      {session ? <UserStatus user={session.user} /> : <SpotifyLogin />}
     </div>
   )
 }

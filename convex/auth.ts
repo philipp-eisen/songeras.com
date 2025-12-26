@@ -25,7 +25,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       enabled: false,
     },
     socialProviders: {
-      google: {
+      spotify: {
         clientId: process.env.SPOTIFY_CLIENT_ID as string,
         clientSecret: process.env.SPOTIFY_CLIENT_SECRET as string,
       },
