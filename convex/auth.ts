@@ -12,10 +12,6 @@ if (!siteUrl) {
   throw new Error('Missing required environment variable: SITE_URL')
 }
 
-// Email/password is only available in local development
-const isLocalDev =
-  siteUrl.includes('localhost') || siteUrl.includes('127.0.0.1')
-
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
 export const authComponent = createClient<DataModel>(components.betterAuth)
@@ -25,18 +21,13 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
     // Email/password only enabled in local development
-    emailAndPassword: isLocalDev
-      ? {
-          enabled: true,
-          requireEmailVerification: false,
-        }
-      : {
-          enabled: false,
-        },
+    emailAndPassword: {
+      enabled: false,
+    },
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID as string,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        clientId: process.env.SPOTIFY_CLIENT_ID as string,
+        clientSecret: process.env.SPOTIFY_CLIENT_SECRET as string,
       },
     },
     plugins: [
