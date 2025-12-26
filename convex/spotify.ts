@@ -1,61 +1,11 @@
 'use node'
 
+import { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import { v } from 'convex/values'
 import { action } from './_generated/server'
 import { internal } from './_generated/api'
+import type { AccessToken, PlaylistedTrack } from '@spotify/web-api-ts-sdk'
 import type { Id } from './_generated/dataModel'
-
-// ===========================================
-// Types for Spotify API responses
-// ===========================================
-
-interface SpotifyArtist {
-  name: string
-}
-
-interface SpotifyAlbum {
-  name: string
-  release_date: string // YYYY or YYYY-MM or YYYY-MM-DD
-  images: Array<{ url: string; width: number; height: number }>
-}
-
-interface SpotifyTrack {
-  id: string
-  name: string
-  artists: Array<SpotifyArtist>
-  album: SpotifyAlbum
-  preview_url: string | null
-  uri: string
-}
-
-interface SpotifyPlaylistTrackItem {
-  track: SpotifyTrack | null
-}
-
-interface SpotifyPlaylistTracksResponse {
-  items: Array<SpotifyPlaylistTrackItem>
-  next: string | null
-  total: number
-}
-
-interface SpotifyPlaylistResponse {
-  id: string
-  name: string
-  description: string | null
-  images: Array<{ url: string }>
-  tracks: {
-    total: number
-  }
-  snapshot_id: string
-}
-
-interface SpotifyTokenResponse {
-  access_token: string
-  token_type: string
-  expires_in: number
-  refresh_token?: string
-  scope: string
-}
 
 // ===========================================
 // Helper functions
@@ -97,9 +47,7 @@ function parseSpotifyPlaylistId(input: string): string {
 /**
  * Refresh Spotify access token using the refresh token
  */
-async function refreshSpotifyToken(
-  refreshToken: string,
-): Promise<SpotifyTokenResponse> {
+async function refreshSpotifyToken(refreshToken: string): Promise<AccessToken> {
   const clientId = process.env.SPOTIFY_CLIENT_ID
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET
 
@@ -126,66 +74,58 @@ async function refreshSpotifyToken(
     )
   }
 
-  return response.json()
+  const data = await response.json()
+
+  return {
+    access_token: data.access_token,
+    token_type: data.token_type,
+    expires_in: data.expires_in,
+    refresh_token: data.refresh_token ?? refreshToken,
+  }
 }
 
 /**
- * Fetch playlist metadata from Spotify API
+ * Create an authenticated Spotify SDK instance using an access token
  */
-async function fetchPlaylistMetadata(
-  accessToken: string,
-  playlistId: string,
-): Promise<SpotifyPlaylistResponse> {
-  const response = await fetch(
-    `https://api.spotify.com/v1/playlists/${playlistId}?fields=id,name,description,images,tracks(total),snapshot_id`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  )
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Failed to fetch playlist: ${response.status} ${errorText}`)
+function createSpotifySdk(accessToken: string): SpotifyApi {
+  const clientId = process.env.SPOTIFY_CLIENT_ID
+  if (!clientId) {
+    throw new Error('Missing SPOTIFY_CLIENT_ID environment variable')
   }
 
-  return response.json()
+  // Create SDK with the existing access token
+  return SpotifyApi.withAccessToken(clientId, {
+    access_token: accessToken,
+    token_type: 'Bearer',
+    expires_in: 3600, // We handle refresh separately
+    refresh_token: '', // Not needed for API calls
+  })
 }
 
 /**
- * Fetch all tracks from a Spotify playlist (handles pagination)
+ * Fetch all tracks from a playlist (handles pagination)
  */
 async function fetchAllPlaylistTracks(
-  accessToken: string,
+  sdk: SpotifyApi,
   playlistId: string,
-): Promise<Array<SpotifyTrack>> {
-  const tracks: Array<SpotifyTrack> = []
-  let url: string | null =
-    `https://api.spotify.com/v1/playlists/${playlistId}/tracks?fields=items(track(id,name,artists(name),album(name,release_date,images),preview_url,uri)),next,total&limit=100`
+): Promise<Array<PlaylistedTrack>> {
+  const tracks: Array<PlaylistedTrack> = []
+  let offset = 0
+  const limit = 50 // Max allowed by Spotify API
 
-  while (url) {
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
+  let hasMore = true
+  while (hasMore) {
+    const page = await sdk.playlists.getPlaylistItems(
+      playlistId,
+      undefined, // market
+      'items(track(id,name,artists(name),album(name,release_date,images),preview_url,uri)),next,total',
+      limit as 50,
+      offset,
+    )
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(`Failed to fetch tracks: ${response.status} ${errorText}`)
-    }
-
-    const data: SpotifyPlaylistTracksResponse = await response.json()
-
-    for (const item of data.items) {
-      // Skip null tracks (can happen with local files or unavailable tracks)
-      if (item.track && item.track.id) {
-        tracks.push(item.track)
-      }
-    }
-
-    url = data.next
+    tracks.push(...page.items)
+    hasMore = !!page.next
+    offset += limit
   }
 
   return tracks
@@ -244,17 +184,26 @@ export const importSpotifyPlaylist = action({
       })
     }
 
+    // Create authenticated Spotify SDK
+    const sdk = createSpotifySdk(accessToken)
+
     // Parse the playlist ID from the input
     const spotifyPlaylistId = parseSpotifyPlaylistId(args.playlistUrlOrId)
 
-    // Fetch playlist metadata
-    const playlistMeta = await fetchPlaylistMetadata(
-      accessToken,
+    // Fetch playlist metadata using SDK
+    const playlistMeta = await sdk.playlists.getPlaylist(
       spotifyPlaylistId,
+      undefined, // market
+      'id,name,description,images,tracks(total),snapshot_id',
     )
 
-    // Fetch all tracks
-    const tracks = await fetchAllPlaylistTracks(accessToken, spotifyPlaylistId)
+    // Fetch all tracks using SDK (handles pagination)
+    const playlistTracks = await fetchAllPlaylistTracks(sdk, spotifyPlaylistId)
+
+    // Filter valid tracks (skip local files, episodes, and unavailable tracks)
+    const validTracks = playlistTracks.filter(
+      (item) => 'id' in item.track && item.track.id && 'album' in item.track,
+    )
 
     // Upsert the playlist
     const playlistId = await ctx.runMutation(
@@ -263,16 +212,28 @@ export const importSpotifyPlaylist = action({
         ownerUserId: userId,
         spotifyPlaylistId: playlistMeta.id,
         name: playlistMeta.name,
-        description: playlistMeta.description ?? undefined,
+        description: playlistMeta.description || undefined,
         imageUrl: playlistMeta.images[0]?.url,
-        trackCount: tracks.length,
+        trackCount: validTracks.length,
         snapshotId: playlistMeta.snapshot_id,
       },
     )
 
     // Upsert each song and create playlist mappings
-    for (let i = 0; i < tracks.length; i++) {
-      const track = tracks[i]
+    for (let i = 0; i < validTracks.length; i++) {
+      // We've already filtered to only include tracks with albums
+      const track = validTracks[i].track as {
+        id: string
+        name: string
+        artists: Array<{ name: string }>
+        album: {
+          name: string
+          release_date: string
+          images: Array<{ url: string }>
+        }
+        preview_url: string | null
+        uri: string
+      }
 
       const songId = await ctx.runMutation(
         internal.spotifyInternal.upsertSong,
@@ -297,7 +258,7 @@ export const importSpotifyPlaylist = action({
 
     return {
       playlistId,
-      trackCount: tracks.length,
+      trackCount: validTracks.length,
     }
   },
 })
