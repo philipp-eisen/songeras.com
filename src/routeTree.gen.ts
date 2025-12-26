@@ -11,7 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as GameRouteImport } from './routes/game'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as GameGameIdRouteImport } from './routes/game.$gameId'
+import { Route as PlayGameIdRouteImport } from './routes/play.$gameId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const GameRoute = GameRouteImport.update({
@@ -24,10 +24,10 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const GameGameIdRoute = GameGameIdRouteImport.update({
-  id: '/$gameId',
-  path: '/$gameId',
-  getParentRoute: () => GameRoute,
+const PlayGameIdRoute = PlayGameIdRouteImport.update({
+  id: '/play/$gameId',
+  path: '/play/$gameId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -37,34 +37,35 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/game': typeof GameRouteWithChildren
-  '/game/$gameId': typeof GameGameIdRoute
+  '/game': typeof GameRoute
+  '/play/$gameId': typeof PlayGameIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/game': typeof GameRouteWithChildren
-  '/game/$gameId': typeof GameGameIdRoute
+  '/game': typeof GameRoute
+  '/play/$gameId': typeof PlayGameIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/game': typeof GameRouteWithChildren
-  '/game/$gameId': typeof GameGameIdRoute
+  '/game': typeof GameRoute
+  '/play/$gameId': typeof PlayGameIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/game' | '/game/$gameId' | '/api/auth/$'
+  fullPaths: '/' | '/game' | '/play/$gameId' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/game' | '/game/$gameId' | '/api/auth/$'
-  id: '__root__' | '/' | '/game' | '/game/$gameId' | '/api/auth/$'
+  to: '/' | '/game' | '/play/$gameId' | '/api/auth/$'
+  id: '__root__' | '/' | '/game' | '/play/$gameId' | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  GameRoute: typeof GameRouteWithChildren
+  GameRoute: typeof GameRoute
+  PlayGameIdRoute: typeof PlayGameIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -84,12 +85,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/game/$gameId': {
-      id: '/game/$gameId'
-      path: '/$gameId'
-      fullPath: '/game/$gameId'
-      preLoaderRoute: typeof GameGameIdRouteImport
-      parentRoute: typeof GameRoute
+    '/play/$gameId': {
+      id: '/play/$gameId'
+      path: '/play/$gameId'
+      fullPath: '/play/$gameId'
+      preLoaderRoute: typeof PlayGameIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -101,19 +102,10 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface GameRouteChildren {
-  GameGameIdRoute: typeof GameGameIdRoute
-}
-
-const GameRouteChildren: GameRouteChildren = {
-  GameGameIdRoute: GameGameIdRoute,
-}
-
-const GameRouteWithChildren = GameRoute._addFileChildren(GameRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  GameRoute: GameRouteWithChildren,
+  GameRoute: GameRoute,
+  PlayGameIdRoute: PlayGameIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

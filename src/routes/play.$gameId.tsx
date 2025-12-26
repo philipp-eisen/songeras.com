@@ -21,7 +21,7 @@ type PlayerData = GameData['players'][0]
 type TimelineData = NonNullable<FunctionReturnType<typeof api.timelines.getAllTimelines>>[0]
 type CardData = NonNullable<FunctionReturnType<typeof api.timelines.getCurrentRoundCard>>
 
-export const Route = createFileRoute('/game/$gameId')({
+export const Route = createFileRoute('/play/$gameId')({
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(
       getGameQuery(params.gameId as Id<'games'>),

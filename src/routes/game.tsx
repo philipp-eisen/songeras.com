@@ -114,7 +114,7 @@ function JoinGameSection() {
 
     try {
       const result = await joinByCode({ joinCode: joinCode.trim() })
-      navigate({ to: '/game/$gameId', params: { gameId: result.gameId } })
+      navigate({ to: '/play/$gameId', params: { gameId: result.gameId } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game')
     } finally {
@@ -172,7 +172,7 @@ function MyGamesSection() {
           {games.map((game) => (
             <Link
               key={game._id}
-              to="/game/$gameId"
+              to="/play/$gameId"
               params={{ gameId: game._id }}
               className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
             >
@@ -302,7 +302,7 @@ function CreateGameSection() {
         mode,
         playerNames: mode === 'hostOnly' ? playerNames.filter((n) => n.trim()) : undefined,
       })
-      navigate({ to: '/game/$gameId', params: { gameId: result.gameId } })
+      navigate({ to: '/play/$gameId', params: { gameId: result.gameId } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create game')
     } finally {
