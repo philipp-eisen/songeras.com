@@ -1,5 +1,4 @@
 export { LobbyView } from './lobby-view'
-export { GameView } from './game-view'
 export { FinishedView } from './finished-view'
 export { GameHeader } from './game-header'
 export { TimelineView } from './timeline-view'
