@@ -2,7 +2,13 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import type { GameData } from './types'
 import { getAllTimelinesQuery } from '@/lib/convex-queries'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 
 interface FinishedViewProps {
   game: GameData
@@ -32,15 +38,22 @@ export function FinishedView({ game }: FinishedViewProps) {
           {[...timelines]
             .sort((a, b) => b.cards.length - a.cards.length)
             .map((timeline, index) => (
-              <Card key={timeline.playerId} className={index === 0 ? 'border-2 border-primary' : ''}>
+              <Card
+                key={timeline.playerId}
+                className={index === 0 ? 'border-2 border-primary' : ''}
+              >
                 <CardHeader className="py-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">
                       {index === 0 && '🏆 '}
                       {timeline.displayName}
-                      {timeline.isCurrentUser && <Badge className="ml-2">You</Badge>}
+                      {timeline.isCurrentUser && (
+                        <Badge className="ml-2">You</Badge>
+                      )}
                     </CardTitle>
-                    <span className="text-lg font-bold">{timeline.cards.length} cards</span>
+                    <span className="text-lg font-bold">
+                      {timeline.cards.length} cards
+                    </span>
                   </div>
                 </CardHeader>
                 <CardContent className="py-2">
@@ -51,8 +64,12 @@ export function FinishedView({ game }: FinishedViewProps) {
                         className="shrink-0 rounded-lg border bg-card p-2 text-center"
                         style={{ minWidth: '100px' }}
                       >
-                        <p className="text-xs font-medium truncate">{card.title}</p>
-                        <p className="text-sm font-bold text-primary">{card.releaseYear}</p>
+                        <p className="text-xs font-medium truncate">
+                          {card.title}
+                        </p>
+                        <p className="text-sm font-bold text-primary">
+                          {card.releaseYear}
+                        </p>
                       </div>
                     ))}
                   </div>
