@@ -4,7 +4,6 @@ import { api } from '../../../convex/_generated/api'
 import { BetControls } from './bet-controls'
 import type { CardData, GameData, PlayerData } from './types'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 
 interface TurnControlsProps {
   game: GameData
@@ -21,13 +20,11 @@ export function TurnControls({
   isHost,
   currentCard,
 }: TurnControlsProps) {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   const startRound = useMutation(api.turns.startRound)
   const skipRound = useMutation(api.turns.skipRound)
-  const placeCard = useMutation(api.turns.placeCard)
   const revealCard = useMutation(api.turns.revealCard)
   const resolveRound = useMutation(api.turns.resolveRound)
   const tradeTokensForCard = useMutation(api.turns.tradeTokensForCard)
@@ -86,44 +83,14 @@ export function TurnControls({
     )
   }
 
-  // awaitingPlacement phase
+  // awaitingPlacement phase - active player sees the drag-drop UI in GameControlsBar
   if (game.phase === 'awaitingPlacement' && isActivePlayer) {
     return (
-      <div className="space-y-4">
-        <p>Select where to place the card on your timeline</p>
-        <p className="text-sm text-muted-foreground">
-          Enter an index (0 = before first card, higher = after)
-        </p>
-        <div className="flex gap-2 items-center">
-          <Input
-            type="number"
-            min={0}
-            placeholder="Position"
-            value={selectedIndex ?? ''}
-            onChange={(e) =>
-              setSelectedIndex(e.target.value ? parseInt(e.target.value) : null)
-            }
-            className="w-24"
-          />
-          <Button
-            onClick={() =>
-              selectedIndex !== null &&
-              handleAction(() =>
-                placeCard({
-                  gameId: game._id,
-                  actingPlayerId: activePlayer._id,
-                  insertIndex: selectedIndex,
-                }),
-              )
-            }
-            disabled={loading || selectedIndex === null}
-          >
-            Place Card
-          </Button>
-        </div>
+      <div className="space-y-2">
         {game.useTokens && activePlayer.tokenBalance >= 1 && (
           <Button
             variant="outline"
+            size="sm"
             onClick={() =>
               handleAction(() =>
                 skipRound({

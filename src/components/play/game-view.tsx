@@ -60,6 +60,7 @@ export function GameView({ game }: GameViewProps) {
               timeline={timeline}
               game={game}
               isActivePlayer={timeline.playerId === activePlayer?._id}
+              currentCard={currentCard}
             />
           ))}
         </div>
