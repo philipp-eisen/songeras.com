@@ -1,5 +1,5 @@
-import { Badge } from '@/components/ui/badge'
 import type { GameData } from './types'
+import { Badge } from '@/components/ui/badge'
 
 interface GameHeaderProps {
   game: GameData

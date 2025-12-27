@@ -9,11 +9,10 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import type { DragEndEvent, Modifier } from '@dnd-kit/core'
 import { useState } from 'react'
-import type { Modifier } from '@dnd-kit/core'
 import { GameCard } from './game-card'
 import { DraggableMysteryCard } from './round-timeline-card'
-import type { DragEndEvent } from '@dnd-kit/core'
 import type { TimelineData } from './types'
 import { cn } from '@/lib/utils'
 
@@ -58,14 +57,18 @@ interface ActiveTimelineDropzoneProps {
   timeline: TimelineData
   onPlaceCard: (insertIndex: number) => void
   disabled?: boolean
+  /** Current placement index (for repositioning during awaitingReveal) */
+  currentPlacementIndex?: number
 }
 
 export function ActiveTimelineDropzone({
   timeline,
   onPlaceCard,
   disabled,
+  currentPlacementIndex,
 }: ActiveTimelineDropzoneProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const isRepositioning = currentPlacementIndex !== undefined
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -119,22 +122,27 @@ export function ActiveTimelineDropzone({
         {/* Timeline drop target area */}
         <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 bg-muted/30 p-3">
           <p className="mb-2 text-center text-xs text-muted-foreground">
-            Drag the mystery card to your timeline
+            {isRepositioning
+              ? 'Drag the card to reposition it before reveal'
+              : 'Drag the mystery card to your timeline'}
           </p>
           <TimelineDropArea
             cards={timeline.cards}
             isDragging={isDragging}
             disabled={disabled}
+            currentPlacementIndex={currentPlacementIndex}
           />
         </div>
 
-        {/* Draggable mystery card */}
-        <div className="flex justify-center">
-          <DraggableMysteryCardWrapper
-            disabled={disabled}
-            isDragging={isDragging}
-          />
-        </div>
+        {/* Draggable mystery card - only show separately if not yet placed */}
+        {!isRepositioning && (
+          <div className="flex justify-center">
+            <DraggableMysteryCardWrapper
+              disabled={disabled}
+              isDragging={isDragging}
+            />
+          </div>
+        )}
       </div>
 
       {/* Drag overlay - follows cursor during drag */}
@@ -179,15 +187,19 @@ interface TimelineDropAreaProps {
   cards: TimelineData['cards']
   isDragging: boolean
   disabled?: boolean
+  currentPlacementIndex?: number
 }
 
 function TimelineDropArea({
   cards,
   isDragging,
   disabled,
+  currentPlacementIndex,
 }: TimelineDropAreaProps) {
+  const isRepositioning = currentPlacementIndex !== undefined
+
   // If no cards, show a single drop zone for index 0
-  if (cards.length === 0) {
+  if (cards.length === 0 && !isRepositioning) {
     return (
       <div className="flex justify-center">
         <DropSlot index={0} isActive={isDragging} disabled={disabled} isEmpty />
@@ -195,29 +207,83 @@ function TimelineDropArea({
     )
   }
 
+  // Build display items - cards and the placed mystery card if repositioning
+  const displayItems: Array<
+    | { type: 'card'; card: TimelineData['cards'][0]; index: number }
+    | { type: 'mystery'; index: number }
+  > = []
+
+  for (let i = 0; i <= cards.length; i++) {
+    // Insert mystery card at its current placement position
+    if (isRepositioning && i === currentPlacementIndex) {
+      displayItems.push({ type: 'mystery', index: i })
+    }
+    if (i < cards.length) {
+      displayItems.push({ type: 'card', card: cards[i], index: i })
+    }
+  }
+
+  // Handle edge case: mystery at end
+  if (
+    isRepositioning &&
+    currentPlacementIndex === cards.length &&
+    !displayItems.some((d) => d.type === 'mystery')
+  ) {
+    displayItems.push({ type: 'mystery', index: cards.length })
+  }
+
   // Render cards with drop slots between them
   return (
     <div className="flex items-center overflow-x-auto py-1">
-      {/* Drop slot before first card */}
-      <DropSlot index={0} isActive={isDragging} disabled={disabled} />
+      {/* Drop slot at position 0 - hide if mystery card is there */}
+      {!(isRepositioning && currentPlacementIndex === 0) && (
+        <DropSlot index={0} isActive={isDragging} disabled={disabled} />
+      )}
 
-      {cards.map((card, cardIndex) => (
-        <div key={card._id} className="flex shrink-0 items-center">
-          <GameCard
-            title={card.title}
-            releaseYear={card.releaseYear}
-            artistName={card.artistNames[0]}
-            albumImageUrl={card.albumImageUrl}
-            className="pointer-events-none"
-          />
-          {/* Drop slot after this card */}
-          <DropSlot
-            index={cardIndex + 1}
-            isActive={isDragging}
-            disabled={disabled}
-          />
-        </div>
-      ))}
+      {displayItems.map((item) => {
+        if (item.type === 'mystery') {
+          // Draggable mystery card in its current position
+          return (
+            <div key="placed-mystery" className="flex shrink-0 items-center">
+              <DraggableMysteryCardWrapper
+                disabled={disabled}
+                isDragging={isDragging}
+              />
+              {/* Drop slot after mystery card - but not if it would be redundant */}
+              {!(isRepositioning && currentPlacementIndex === cards.length) && (
+                <DropSlot
+                  index={item.index + 1}
+                  isActive={isDragging}
+                  disabled={disabled}
+                />
+              )}
+            </div>
+          )
+        }
+
+        // Drop slot index is always after the card
+        const dropSlotIndex = item.index + 1
+
+        return (
+          <div key={item.card._id} className="flex shrink-0 items-center">
+            <GameCard
+              title={item.card.title}
+              releaseYear={item.card.releaseYear}
+              artistName={item.card.artistNames[0]}
+              albumImageUrl={item.card.albumImageUrl}
+              className="pointer-events-none"
+            />
+            {/* Drop slot after this card - skip if mystery card is at this position */}
+            {!(isRepositioning && currentPlacementIndex === dropSlotIndex) && (
+              <DropSlot
+                index={dropSlotIndex}
+                isActive={isDragging}
+                disabled={disabled}
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }

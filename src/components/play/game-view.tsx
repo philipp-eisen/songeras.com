@@ -18,18 +18,23 @@ export function GameView({ game }: GameViewProps) {
     (p) => p.seatIndex === game.currentTurnSeatIndex,
   )
 
+  // Filter out active player's timeline - it's shown in GameControlsBar
+  const otherTimelines = timelines?.filter(
+    (t) => t.playerId !== activePlayer?._id,
+  )
+
   return (
     <div className="space-y-4">
-      {/* Timelines */}
-      {timelines && (
+      {/* Timelines (excluding active player - shown in controls bar) */}
+      {otherTimelines && otherTimelines.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Timelines</h2>
-          {timelines.map((timeline) => (
+          <h2 className="text-lg font-semibold">Other Timelines</h2>
+          {otherTimelines.map((timeline) => (
             <TimelineView
               key={timeline.playerId}
               timeline={timeline}
               game={game}
-              isActivePlayer={timeline.playerId === activePlayer?._id}
+              isActivePlayer={false}
               currentCard={currentCard}
             />
           ))}
