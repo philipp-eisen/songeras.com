@@ -388,6 +388,91 @@ export function useSpotifyPlayback({
     return () => cleanupProgressInterval()
   }, [cleanupProgressInterval, isPlaying, usingFallback])
 
+  // Track previous URI to detect song changes
+  const prevSpotifyUriRef = useRef<string | undefined>(undefined)
+
+  // Play new track when spotifyUri changes (SDK mode)
+  useEffect(() => {
+    // Skip if no URI, using fallback, or player not ready
+    if (!spotifyUri || usingFallback || status !== 'ready') {
+      prevSpotifyUriRef.current = spotifyUri
+      return
+    }
+
+    // Skip if URI hasn't actually changed
+    if (spotifyUri === prevSpotifyUriRef.current) {
+      return
+    }
+
+    prevSpotifyUriRef.current = spotifyUri
+
+    // Reset progress for new track
+    setProgressMs(0)
+    setDurationMs(0)
+
+    const deviceId = deviceIdRef.current
+    const token = accessTokenRef.current
+
+    if (!deviceId || !token) {
+      console.log('[Spotify] Cannot auto-play: device or token not ready')
+      return
+    }
+
+    console.log('[Spotify] Song changed, starting playback:', spotifyUri)
+
+    // Auto-play the new track
+    const playNewTrack = async () => {
+      try {
+        const playRes = await fetch(
+          `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              uris: [spotifyUri],
+            }),
+          },
+        )
+
+        if (!playRes.ok && playRes.status !== 204) {
+          console.error('[Spotify] Auto-play error:', playRes.status)
+        }
+      } catch (err) {
+        console.error('[Spotify] Auto-play error:', err)
+      }
+    }
+
+    playNewTrack()
+  }, [spotifyUri, usingFallback, status])
+
+  // Track previous preview URL for fallback mode
+  const prevPreviewUrlRef = useRef<string | undefined>(undefined)
+
+  // Auto-play new preview when previewUrl changes (fallback mode)
+  useEffect(() => {
+    if (!usingFallback || !previewUrl) {
+      prevPreviewUrlRef.current = previewUrl
+      return
+    }
+
+    // Skip if URL hasn't actually changed
+    if (previewUrl === prevPreviewUrlRef.current) {
+      return
+    }
+
+    prevPreviewUrlRef.current = previewUrl
+
+    // Reset progress for new track
+    setProgressMs(0)
+    setDurationMs(0)
+    setIsPlaying(false)
+
+    console.log('[Spotify] Preview URL changed, ready to play:', previewUrl)
+  }, [previewUrl, usingFallback])
+
   const playSdkTrack = useCallback(async () => {
     const deviceId = deviceIdRef.current
     const token = accessTokenRef.current

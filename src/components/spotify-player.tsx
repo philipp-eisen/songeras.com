@@ -2,8 +2,8 @@ import { useCallback } from 'react'
 import { PauseIcon, PlayIcon, SpotifyLogoIcon } from '@phosphor-icons/react'
 import type { ChangeEvent } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { useSpotifyPlayback } from '@/hooks/use-spotify-playback'
+import { cn } from '@/lib/utils'
 
 interface SpotifyPlayerProps {
   spotifyUri?: string
@@ -33,73 +33,6 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
     [seek],
   )
 
-  // Error state
-  if (status === 'error' && error) {
-    return (
-      <Card className="border-dashed border-2 border-destructive/50">
-        <CardContent className="py-6">
-          <div className="text-center">
-            <p className="text-lg font-medium text-destructive">
-              ⚠️ Playback Unavailable
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              {error.message}
-            </p>
-
-            {error.needsPremium && (
-              <p className="text-xs text-muted-foreground mt-2">
-                The Spotify Web Playback SDK requires a Premium account.
-              </p>
-            )}
-
-            <div className="flex flex-col items-center gap-2 mt-4">
-              {error.needsReauth && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => (window.location.href = '/api/auth/sign-out')}
-                >
-                  Sign Out to Re-authenticate
-                </Button>
-              )}
-
-              {spotifyUrl && (
-                <a
-                  href={spotifyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#1DB954] hover:bg-[#1ed760] text-white rounded-full font-medium transition-colors text-sm"
-                >
-                  <SpotifyLogoIcon weight="duotone" className="h-4 w-4" />
-                  Open in Spotify App
-                </a>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Loading state
-  if (status === 'loading' || status === 'connecting') {
-    return (
-      <Card className="border-2 border-primary/30">
-        <CardContent className="py-6">
-          <div className="text-center">
-            <div className="inline-block animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mb-2" />
-            <p className="text-sm text-muted-foreground">
-              {status === 'loading'
-                ? 'Loading Spotify...'
-                : 'Connecting player...'}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Ready/Playing/Paused state
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
     const mins = Math.floor(totalSeconds / 60)
@@ -107,70 +40,105 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  return (
-    <Card className="border-2 border-primary/50 bg-primary/5">
-      <CardContent className="py-4">
-        <div className="flex flex-col gap-3">
-          {/* Fallback notice */}
-          {usingFallback && (
-            <p className="text-xs text-center text-amber-600">
-              Playing 30-second preview (Premium required for full playback)
-            </p>
-          )}
-
-          <div className="flex items-center gap-4">
-            <Button
-              variant={isPlaying ? 'secondary' : 'default'}
-              size="lg"
-              className="h-14 w-14 rounded-full shrink-0"
-              onClick={togglePlayPause}
-              disabled={!canPlay}
-            >
-              {isPlaying ? (
-                <PauseIcon weight="duotone" className="h-6 w-6" />
-              ) : (
-                <PlayIcon weight="duotone" className="h-6 w-6" />
-              )}
-            </Button>
-
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-primary mb-1">
-                🎵 Listen to guess the year!
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground w-10 shrink-0">
-                  {formatTime(progressMs)}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={durationMs || 1}
-                  value={progressMs}
-                  onChange={handleSeek}
-                  className="flex-1 h-2 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
-                />
-                <span className="text-xs text-muted-foreground w-10 shrink-0">
-                  {formatTime(durationMs)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {spotifyUrl && (
-            <div className="text-center">
-              <a
-                href={spotifyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1"
-              >
-                <SpotifyLogoIcon weight="duotone" className="h-3 w-3" />
-                Open in Spotify →
-              </a>
-            </div>
-          )}
+  // No song state
+  if (!spotifyUri && !previewUrl) {
+    return (
+      <div className="flex items-center gap-3 rounded-full bg-muted/50 px-2 py-1.5">
+        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+          <SpotifyLogoIcon className="h-4 w-4 text-muted-foreground" />
         </div>
-      </CardContent>
-    </Card>
+        <span className="text-sm text-muted-foreground">
+          Draw a card to play
+        </span>
+      </div>
+    )
+  }
+
+  // Error state
+  if (status === 'error' && error) {
+    return (
+      <div className="flex items-center gap-3 rounded-full bg-destructive/10 px-3 py-1.5">
+        <span className="text-sm text-destructive">⚠️ {error.message}</span>
+        {spotifyUrl && (
+          <a
+            href={spotifyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-auto text-xs bg-[#1DB954] hover:bg-[#1ed760] text-white px-3 py-1 rounded-full transition-colors"
+          >
+            Open Spotify
+          </a>
+        )}
+      </div>
+    )
+  }
+
+  // Loading state
+  if (status === 'loading' || status === 'connecting') {
+    return (
+      <div className="flex items-center gap-3 rounded-full bg-muted/50 px-2 py-1.5">
+        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
+          <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+        <span className="text-sm text-muted-foreground">
+          {status === 'loading' ? 'Loading...' : 'Connecting...'}
+        </span>
+      </div>
+    )
+  }
+
+  // Ready/Playing/Paused state
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant={isPlaying ? 'secondary' : 'default'}
+        size="icon"
+        className={cn(
+          'h-10 w-10 rounded-full shrink-0 transition-all',
+          isPlaying && 'bg-primary text-primary-foreground',
+        )}
+        onClick={togglePlayPause}
+        disabled={!canPlay}
+      >
+        {isPlaying ? (
+          <PauseIcon weight="fill" className="h-5 w-5" />
+        ) : (
+          <PlayIcon weight="fill" className="h-5 w-5" />
+        )}
+      </Button>
+
+      <div className="flex-1 flex items-center gap-2 min-w-0">
+        <span className="text-xs tabular-nums text-muted-foreground w-9 text-right shrink-0">
+          {formatTime(progressMs)}
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={durationMs || 1}
+          value={progressMs}
+          onChange={handleSeek}
+          className="flex-1 h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm"
+        />
+        <span className="text-xs tabular-nums text-muted-foreground w-9 shrink-0">
+          {formatTime(durationMs)}
+        </span>
+      </div>
+
+      {usingFallback && (
+        <span className="text-[10px] text-amber-600 shrink-0">30s preview</span>
+      )}
+
+      {spotifyUrl && (
+        <a
+          href={spotifyUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 text-muted-foreground hover:text-[#1DB954] transition-colors"
+          title="Open in Spotify"
+        >
+          <SpotifyLogoIcon weight="duotone" className="h-5 w-5" />
+        </a>
+      )}
+    </div>
   )
 }
