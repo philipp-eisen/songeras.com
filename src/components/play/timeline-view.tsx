@@ -1,3 +1,4 @@
+import { GameCard } from './game-card'
 import type { GameData, TimelineData } from './types'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -41,33 +42,18 @@ export function TimelineView({
         </div>
       </CardHeader>
       <CardContent className="py-2">
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="-m-1 flex gap-2 overflow-x-auto p-1">
           {timeline.cards.length === 0 ? (
             <p className="text-sm text-muted-foreground">No cards yet</p>
           ) : (
             timeline.cards.map((card) => (
-              <div
+              <GameCard
                 key={card._id}
-                className="shrink-0 rounded-lg border bg-card p-2 text-center"
-                style={{ minWidth: '120px' }}
-              >
-                {card.albumImageUrl && (
-                  <img
-                    src={card.albumImageUrl}
-                    alt=""
-                    className="mx-auto mb-1 h-12 w-12 rounded object-cover"
-                  />
-                )}
-                <p className="text-xs font-medium truncate" title={card.title}>
-                  {card.title}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {card.artistNames[0]}
-                </p>
-                <p className="text-sm font-bold text-primary">
-                  {card.releaseYear}
-                </p>
-              </div>
+                title={card.title}
+                releaseYear={card.releaseYear}
+                artistName={card.artistNames[0]}
+                albumImageUrl={card.albumImageUrl}
+              />
             ))
           )}
         </div>

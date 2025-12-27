@@ -1,4 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { GameCard } from './game-card'
 import type { GameData } from './types'
 import { getAllTimelinesQuery } from '@/lib/convex-queries'
 import { Badge } from '@/components/ui/badge'
@@ -57,20 +58,15 @@ export function FinishedView({ game }: FinishedViewProps) {
                   </div>
                 </CardHeader>
                 <CardContent className="py-2">
-                  <div className="flex gap-2 overflow-x-auto pb-2">
+                  <div className="-m-1 flex gap-2 overflow-x-auto p-1">
                     {timeline.cards.map((card) => (
-                      <div
+                      <GameCard
                         key={card._id}
-                        className="shrink-0 rounded-lg border bg-card p-2 text-center"
-                        style={{ minWidth: '100px' }}
-                      >
-                        <p className="text-xs font-medium truncate">
-                          {card.title}
-                        </p>
-                        <p className="text-sm font-bold text-primary">
-                          {card.releaseYear}
-                        </p>
-                      </div>
+                        title={card.title}
+                        releaseYear={card.releaseYear}
+                        artistName={card.artistNames[0]}
+                        albumImageUrl={card.albumImageUrl}
+                      />
                     ))}
                   </div>
                 </CardContent>
