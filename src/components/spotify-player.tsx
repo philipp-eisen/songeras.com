@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
+import { PauseIcon, PlayIcon, SpotifyLogoIcon } from '@phosphor-icons/react'
 import type { ChangeEvent } from 'react'
-import { SpotifyLogoIcon, PauseIcon, PlayIcon } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useSpotifyPlayback } from '@/hooks/use-spotify-playback'
