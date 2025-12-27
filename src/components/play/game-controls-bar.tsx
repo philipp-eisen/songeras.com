@@ -7,7 +7,6 @@ import { ActiveTimelineDropzone } from './active-timeline-dropzone'
 import type { GameData } from './types'
 import {
   getAllTimelinesQuery,
-  getCurrentRoundCardQuery,
   getCurrentRoundSongPreviewQuery,
 } from '@/lib/convex-queries'
 import { SpotifyPlayer } from '@/components/spotify-player'
@@ -18,7 +17,6 @@ interface GameControlsBarProps {
 }
 
 export function GameControlsBar({ game }: GameControlsBarProps) {
-  const { data: currentCard } = useQuery(getCurrentRoundCardQuery(game._id))
   const { data: songPreview } = useQuery(
     getCurrentRoundSongPreviewQuery(game._id),
   )
@@ -110,7 +108,6 @@ export function GameControlsBar({ game }: GameControlsBarProps) {
               activePlayer={activePlayer}
               isActivePlayer={isActivePlayer}
               isHost={isHost}
-              currentCard={currentCard ?? null}
             />
           )}
         </div>

@@ -2,7 +2,7 @@ import { useMutation } from 'convex/react'
 import { useState } from 'react'
 import { api } from '../../../convex/_generated/api'
 import { BetControls } from './bet-controls'
-import type { CardData, GameData, PlayerData } from './types'
+import type { GameData, PlayerData } from './types'
 import { Button } from '@/components/ui/button'
 
 interface TurnControlsProps {
@@ -10,7 +10,6 @@ interface TurnControlsProps {
   activePlayer: PlayerData
   isActivePlayer: boolean
   isHost: boolean
-  currentCard: CardData | null
 }
 
 export function TurnControls({
@@ -18,7 +17,6 @@ export function TurnControls({
   activePlayer,
   isActivePlayer,
   isHost,
-  currentCard,
 }: TurnControlsProps) {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -175,12 +173,8 @@ export function TurnControls({
     )
 
     return (
-      <div className="space-y-4">
-        <p>
-          Card revealed! {currentCard?.title} by{' '}
-          {currentCard?.artistNames.join(', ')} ({currentCard?.releaseYear})
-        </p>
-        <div className="flex gap-2 flex-wrap">
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-2">
           {(isActivePlayer || isHost) && (
             <Button
               onClick={() =>
