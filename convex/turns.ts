@@ -270,6 +270,7 @@ export const startRound = mutation({
       currentRound: {
         cardId: card._id,
         activePlayerId: activePlayer._id,
+        placementIndex: undefined,
         bets: [],
         tokenClaimers: [],
       },
@@ -350,6 +351,7 @@ export const skipRound = mutation({
       currentRound: {
         cardId: newCard._id,
         activePlayerId: activePlayer._id,
+        placementIndex: undefined,
         bets: [],
         tokenClaimers: [],
       },
