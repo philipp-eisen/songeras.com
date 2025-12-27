@@ -192,19 +192,34 @@ async function insertCardIntoTimeline(
 
 /**
  * Draw the next card from the deck
+ * Cards are drawn in ascending deckOrder to maintain deterministic shuffling
  */
 async function drawNextCard(
   ctx: MutationCtx,
   gameId: Id<'games'>,
 ): Promise<GameCard | null> {
-  const nextCard = await ctx.db
+  // Collect all deck cards and sort by deckOrder to get the next card
+  const deckCards = await ctx.db
     .query('gameCards')
     .withIndex('by_gameId_and_state', (q) =>
       q.eq('gameId', gameId).eq('state', 'deck'),
     )
-    .first()
+    .collect()
 
-  return nextCard
+  if (deckCards.length === 0) {
+    return null
+  }
+
+  // Sort by deckOrder ascending (lower numbers drawn first)
+  // Cards without deckOrder should be last (shouldn't happen in normal flow)
+  deckCards.sort((a, b) => {
+    if (a.deckOrder === undefined && b.deckOrder === undefined) return 0
+    if (a.deckOrder === undefined) return 1
+    if (b.deckOrder === undefined) return -1
+    return a.deckOrder - b.deckOrder
+  })
+
+  return deckCards[0]
 }
 
 /**

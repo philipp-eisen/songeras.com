@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import type { ChangeEvent } from 'react'
-import { Play, Pause, SpotifyLogo } from '@phosphor-icons/react'
+import { SpotifyLogoIcon, PauseIcon, PlayIcon } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useSpotifyPlayback } from '@/hooks/use-spotify-playback'
@@ -70,7 +70,7 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#1DB954] hover:bg-[#1ed760] text-white rounded-full font-medium transition-colors text-sm"
                 >
-                  <SpotifyLogo weight="duotone" className="h-4 w-4" />
+                  <SpotifyLogoIcon weight="duotone" className="h-4 w-4" />
                   Open in Spotify App
                 </a>
               )}
@@ -118,7 +118,6 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
             </p>
           )}
 
-          {/* Play/Pause button and progress */}
           <div className="flex items-center gap-4">
             <Button
               variant={isPlaying ? 'secondary' : 'default'}
@@ -128,9 +127,9 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
               disabled={!canPlay}
             >
               {isPlaying ? (
-                <Pause weight="duotone" className="h-6 w-6" />
+                <PauseIcon weight="duotone" className="h-6 w-6" />
               ) : (
-                <Play weight="duotone" className="h-6 w-6" />
+                <PlayIcon weight="duotone" className="h-6 w-6" />
               )}
             </Button>
 
@@ -157,7 +156,6 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
             </div>
           </div>
 
-          {/* Spotify attribution */}
           {spotifyUrl && (
             <div className="text-center">
               <a
@@ -166,7 +164,7 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
                 rel="noopener noreferrer"
                 className="text-xs text-muted-foreground hover:text-primary inline-flex items-center gap-1"
               >
-                <SpotifyLogo weight="duotone" className="h-3 w-3" />
+                <SpotifyLogoIcon weight="duotone" className="h-3 w-3" />
                 Open in Spotify →
               </a>
             </div>
