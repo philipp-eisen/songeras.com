@@ -379,13 +379,7 @@ export function TimelineViewEditable({
             <div className="space-y-2">
               {showExternalMysteryCard && (
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="shrink-0 text-xs">
-                    To place
-                  </Badge>
                   <ExternalMysteryCard disabled={dragDisabled} />
-                  <span className="text-xs text-muted-foreground">
-                    Drag into timeline
-                  </span>
                 </div>
               )}
 
@@ -415,9 +409,7 @@ export function TimelineViewEditable({
                     const card = cardDataMap.get(id)
                     if (!card) return null
 
-                    return (
-                      <SortableTimelineCard key={id} id={id} card={card} />
-                    )
+                    return <SortableTimelineCard key={id} id={id} card={card} />
                   })
                 )}
               </div>
@@ -544,4 +536,3 @@ function SortableTimelineCard({ id, card }: SortableTimelineCardProps) {
     </div>
   )
 }
-
