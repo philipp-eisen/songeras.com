@@ -1,4 +1,4 @@
-import { Gear, House, MusicNotes } from '@phosphor-icons/react'
+import { House, MusicNotes } from '@phosphor-icons/react'
 import { Link } from '@tanstack/react-router'
 import type { Icon } from '@phosphor-icons/react'
 import {
@@ -26,11 +26,6 @@ const menuItems: Array<{ title: string; url: string; icon: Icon }> = [
     url: '/game',
     icon: MusicNotes,
   },
-  {
-    title: 'Settings',
-    url: '/settings',
-    icon: Gear,
-  },
 ]
 
 export function AppSidebar() {
@@ -47,7 +42,7 @@ export function AppSidebar() {
                 <MusicNotes weight="duotone" className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold">Song Game</span>
+                <span className="font-semibold">Song Eras</span>
                 <span className="text-xs text-muted-foreground">
                   Guess the track
                 </span>

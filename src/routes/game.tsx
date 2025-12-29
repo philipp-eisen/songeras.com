@@ -2,6 +2,7 @@ import { Link, Outlet, createFileRoute, useNavigate } from '@tanstack/react-rout
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAction, useMutation } from 'convex/react'
 import { useState } from 'react'
+import { DotsThreeVertical, Trash } from '@phosphor-icons/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { listMyGamesQuery, listMyPlaylistsQuery } from '@/lib/convex-queries'
@@ -10,6 +11,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export const Route = createFileRoute('/game')({
   loader: async ({ context }) => {
@@ -83,14 +97,14 @@ function GameHub() {
         {/* Join Game Section */}
         <JoinGameSection />
 
+        {/* Create Game Section - only for non-guest users with playlists */}
+        {!isGuest && <CreateGameSection />}
+
         {/* My Games Section */}
         <MyGamesSection />
 
         {/* Only show playlist import for non-guest users */}
         {!isGuest && <PlaylistImportSection />}
-
-        {/* Create Game Section - only for non-guest users with playlists */}
-        {!isGuest && <CreateGameSection />}
       </div>
 
       <Outlet />
@@ -149,6 +163,19 @@ function JoinGameSection() {
 
 function MyGamesSection() {
   const { data: games } = useSuspenseQuery(listMyGamesQuery())
+  const deleteGame = useMutation(api.games.deleteGame)
+  const [deleting, setDeleting] = useState<string | null>(null)
+
+  const handleDelete = async (gameId: Id<'games'>) => {
+    setDeleting(gameId)
+    try {
+      await deleteGame({ gameId })
+    } catch (err) {
+      console.error('Failed to delete game:', err)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   if (games.length === 0) {
     return (
@@ -170,26 +197,56 @@ function MyGamesSection() {
       <CardContent>
         <div className="space-y-2">
           {games.map((game) => (
-            <Link
+            <div
               key={game._id}
-              to="/play/$gameId"
-              params={{ gameId: game._id }}
               className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
             >
-              <div>
+              <Link
+                to="/play/$gameId"
+                params={{ gameId: game._id }}
+                className="flex-1"
+              >
                 <p className="font-medium">{game.playlistName ?? 'Unknown playlist'}</p>
                 <p className="text-sm text-muted-foreground">
                   Code: <span className="font-mono">{game.joinCode}</span> •{' '}
                   {game.playerCount} player(s)
                 </p>
-              </div>
+              </Link>
               <div className="flex items-center gap-2">
                 <Badge variant={game.phase === 'lobby' ? 'secondary' : 'default'}>
                   {game.phase}
                 </Badge>
                 {game.isHost && <Badge variant="outline">Host</Badge>}
+                {game.isHost && game.phase === 'lobby' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          disabled={deleting === game._id}
+                        >
+                          <DotsThreeVertical weight="bold" className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleDelete(game._id)
+                        }}
+                      >
+                        <Trash weight="duotone" className="mr-2 h-4 w-4" />
+                        Delete Game
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </CardContent>
@@ -347,18 +404,26 @@ function CreateGameSection() {
         {/* Playlist Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Select Playlist</label>
-          <select
-            value={selectedPlaylist}
-            onChange={(e) => setSelectedPlaylist(e.target.value)}
-            className="w-full rounded-md border bg-background px-3 py-2"
+          <Select
+            value={selectedPlaylist || null}
+            onValueChange={(value) => setSelectedPlaylist(value ?? '')}
           >
-            <option value="">Choose a playlist...</option>
-            {playlists.map((p) => (
-              <option key={p._id} value={p._id}>
-                {p.name} ({p.trackCount} tracks)
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue>
+                {selectedPlaylist
+                  ? playlists.find((p) => p._id === selectedPlaylist)?.name ??
+                    'Choose a playlist...'
+                  : 'Choose a playlist...'}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {playlists.map((p) => (
+                <SelectItem key={p._id} value={p._id}>
+                  {p.name} ({p.trackCount} tracks)
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Mode Selection */}
@@ -434,4 +499,5 @@ function CreateGameSection() {
     </Card>
   )
 }
+
 
