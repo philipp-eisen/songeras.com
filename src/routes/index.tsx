@@ -87,6 +87,7 @@ function JoinGameSection() {
   const joinByCode = useMutation(api.games.joinByCode)
 
   const handleJoin = async () => {
+    if (joining) return // Prevent concurrent submissions
     if (!joinCode.trim()) return
 
     // If not logged in, sign in as anonymous first
@@ -116,7 +117,9 @@ function JoinGameSection() {
     <Card>
       <CardHeader>
         <CardTitle>Join Game</CardTitle>
-        <CardDescription>Enter a 6-character code to join a game</CardDescription>
+        <CardDescription>
+          Enter a 6-character code to join a game
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -159,7 +162,8 @@ function LoginCTA({ isGuest }: LoginCTAProps) {
           {isGuest ? 'Upgrade to Create Games' : 'Want to host your own game?'}
         </CardTitle>
         <CardDescription className="text-base">
-          Sign in with Spotify to import playlists and create games for your friends
+          Sign in with Spotify to import playlists and create games for your
+          friends
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-3">
@@ -194,7 +198,10 @@ function CreateGameSection() {
   const { data: playlists } = useSuspenseQuery(listMyPlaylistsQuery())
   const [selectedPlaylist, setSelectedPlaylist] = useState<string>('')
   const [mode, setMode] = useState<'hostOnly' | 'sidecars'>('hostOnly')
-  const [playerNames, setPlayerNames] = useState<Array<string>>(['Player 1', 'Player 2'])
+  const [playerNames, setPlayerNames] = useState<Array<string>>([
+    'Player 1',
+    'Player 2',
+  ])
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
