@@ -10,6 +10,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import { createServerFn } from '@tanstack/react-start'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
+import { ThemeProvider } from 'next-themes'
 import { Toaster } from 'sonner'
 import appCss from '../styles.css?url'
 import type { ReactNode } from 'react'
@@ -23,6 +24,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/app-sidebar'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 // Get auth information for SSR using available cookies
 const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
@@ -92,32 +94,40 @@ function RootComponent() {
 
 function RootDocument({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body className="bg-neutral-950 text-neutral-50">
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset>
-            <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-              <SidebarTrigger className="-ml-1" />
-            </header>
-            <main className="min-h-0 flex-1">{children}</main>
-          </SidebarInset>
-        </SidebarProvider>
-        <Toaster />
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+      <body className="bg-background text-foreground">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+                <ThemeToggle />
+              </header>
+              <main className="min-h-0 flex-1">{children}</main>
+            </SidebarInset>
+          </SidebarProvider>
+          <Toaster />
+          <TanStackDevtools
+            config={{
+              position: 'bottom-right',
+            }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+            ]}
+          />
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>
