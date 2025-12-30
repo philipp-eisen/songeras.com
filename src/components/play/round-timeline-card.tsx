@@ -113,14 +113,16 @@ function MysteryCardFace() {
   return (
     <Card
       size="sm"
-      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-600 to-purple-800 p-2"
+      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-mystery to-mystery/70 p-2"
     >
       <CardContent className="flex flex-col items-center justify-center gap-2 p-0">
         <SealQuestionIcon
-          className="h-16 w-16 text-white/90"
+          className="h-16 w-16 text-mystery-foreground/90"
           weight="duotone"
         />
-        <span className="text-xs font-medium text-white/80">Mystery Card</span>
+        <span className="text-xs font-medium text-mystery-foreground/80">
+          Mystery Card
+        </span>
       </CardContent>
     </Card>
   )
@@ -147,10 +149,12 @@ function RevealedCardFace({
       size="sm"
       className={cn(
         'relative h-full w-full items-center gap-1 p-2 text-center transition-colors duration-300',
-        isRevealed && isCorrect === true && 'ring-2 ring-success ring-offset-1',
+        isRevealed &&
+          isCorrect === true &&
+          'ring-2 ring-success ring-offset-1 ring-offset-background',
         isRevealed &&
           isCorrect === false &&
-          'ring-2 ring-destructive ring-offset-1',
+          'ring-2 ring-destructive ring-offset-1 ring-offset-background',
       )}
     >
       <CardContent className="flex flex-col items-center gap-0 p-0">
@@ -208,16 +212,18 @@ export function DraggableMysteryCard({ className }: { className?: string }) {
     <Card
       size="sm"
       className={cn(
-        'flex h-40 w-28 shrink-0 cursor-grab items-center justify-center bg-gradient-to-br from-violet-600 to-purple-800 p-2 active:cursor-grabbing',
+        'flex h-40 w-28 shrink-0 cursor-grab items-center justify-center bg-gradient-to-br from-mystery to-mystery/70 p-2 active:cursor-grabbing',
         className,
       )}
     >
       <CardContent className="flex flex-col items-center justify-center gap-2 p-0">
         <SealQuestionIcon
-          className="h-16 w-16 text-white/90"
+          className="h-16 w-16 text-mystery-foreground/90"
           weight="duotone"
         />
-        <span className="text-xs font-medium text-white/80">Drag to place</span>
+        <span className="text-xs font-medium text-mystery-foreground/80">
+          Drag to place
+        </span>
       </CardContent>
     </Card>
   )

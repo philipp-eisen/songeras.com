@@ -440,8 +440,8 @@ function TimelineEmptyDropSlot({ disabled }: { disabled?: boolean }) {
     <div
       ref={setNodeRef}
       className={cn(
-        'flex h-40 w-28 shrink-0 items-center justify-center rounded-md border-2 border-dashed text-center',
-        isOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
+        'flex h-40 w-28 shrink-0 items-center justify-center rounded-md border-2 border-dashed text-center transition-colors',
+        isOver ? 'border-primary bg-primary/10' : 'border-muted-foreground/30',
         disabled && 'opacity-50',
       )}
     >

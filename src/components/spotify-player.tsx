@@ -43,8 +43,8 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
   // No song state
   if (!spotifyUri && !previewUrl) {
     return (
-      <div className="flex items-center gap-3 rounded-full bg-muted/50 px-2 py-1.5">
-        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+      <div className="flex items-center gap-3 rounded-full bg-muted px-2 py-1.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary">
           <SpotifyLogoIcon className="h-4 w-4 text-muted-foreground" />
         </div>
         <span className="text-sm text-muted-foreground">
@@ -57,14 +57,14 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
   // Error state
   if (status === 'error' && error) {
     return (
-      <div className="flex items-center gap-3 rounded-full bg-destructive/10 px-3 py-1.5">
+      <div className="flex items-center gap-3 rounded-full bg-destructive/10 px-3 py-1.5 dark:bg-destructive/20">
         <span className="text-sm text-destructive">⚠️ {error.message}</span>
         {spotifyUrl && (
           <a
             href={spotifyUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-auto text-xs bg-spotify hover:bg-spotify/90 text-spotify-foreground px-3 py-1 rounded-full transition-colors"
+            className="ml-auto rounded-full bg-spotify px-3 py-1 text-xs text-spotify-foreground transition-colors hover:bg-spotify/90"
           >
             Open Spotify
           </a>
@@ -76,9 +76,9 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
   // Loading state
   if (status === 'loading' || status === 'connecting') {
     return (
-      <div className="flex items-center gap-3 rounded-full bg-muted/50 px-2 py-1.5">
-        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
-          <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center gap-3 rounded-full bg-muted px-2 py-1.5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
         <span className="text-sm text-muted-foreground">
           {status === 'loading' ? 'Loading...' : 'Connecting...'}
@@ -117,7 +117,7 @@ export function SpotifyPlayer({ spotifyUri, previewUrl }: SpotifyPlayerProps) {
           max={durationMs || 1}
           value={progressMs}
           onChange={handleSeek}
-          className="flex-1 h-1.5 bg-muted rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm"
+          className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-secondary [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-sm [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110"
         />
         <span className="text-xs tabular-nums text-muted-foreground w-9 shrink-0">
           {formatTime(durationMs)}
