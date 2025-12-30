@@ -1,6 +1,25 @@
-import { House, MusicNotes } from '@phosphor-icons/react'
+import {
+  CaretUpDown,
+  GameController,
+  House,
+  MusicNotes,
+  Playlist,
+  SignOut,
+  SpotifyLogo,
+} from '@phosphor-icons/react'
 import { Link } from '@tanstack/react-router'
 import type { Icon } from '@phosphor-icons/react'
+import { authClient } from '@/lib/auth-client'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +40,16 @@ const menuItems: Array<{ title: string; url: string; icon: Icon }> = [
     url: '/',
     icon: House,
   },
+  {
+    title: 'My Games',
+    url: '/games',
+    icon: GameController,
+  },
+  {
+    title: 'Playlists',
+    url: '/playlists',
+    icon: Playlist,
+  },
 ]
 
 export function AppSidebar() {
@@ -29,19 +58,16 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              render={<Link to="/" />}
-            >
-              <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+            <SidebarMenuButton size="lg" render={<Link to="/" />}>
+              <figure className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <MusicNotes weight="duotone" className="size-4" />
-              </div>
-              <div className="flex flex-col gap-0.5 leading-none">
+              </figure>
+              <article className="flex flex-col gap-0.5 leading-none">
                 <span className="font-semibold">Song Eras</span>
                 <span className="text-xs text-muted-foreground">
                   Guess the track
                 </span>
-              </div>
+              </article>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -65,8 +91,140 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter />
+      <SidebarFooter>
+        <UserMenu />
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
+  )
+}
+
+function UserMenu() {
+  const { data: session, isPending } = authClient.useSession()
+
+  if (isPending) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" disabled>
+            <Avatar size="sm">
+              <AvatarFallback>...</AvatarFallback>
+            </Avatar>
+            <span className="text-sm text-muted-foreground">Loading...</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
+
+  if (!session) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            onClick={() => authClient.signIn.social({ provider: 'spotify' })}
+            className="bg-[#1DB954]/10 hover:bg-[#1DB954]/20"
+          >
+            <SpotifyLogo weight="fill" className="size-5 text-[#1DB954]" />
+            <span className="font-medium">Sign in with Spotify</span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
+
+  const isGuest = session.user.email.includes('guest.songgame.local')
+  const displayName = isGuest ? 'Guest' : session.user.name
+  const initials = isGuest
+    ? 'G'
+    : session.user.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+
+  const handleSignOut = async () => {
+    await authClient.signOut()
+  }
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                size="lg"
+                className="data-open:bg-sidebar-accent data-open:text-sidebar-accent-foreground"
+              >
+                <Avatar size="sm">
+                  {session.user.image && (
+                    <AvatarImage src={session.user.image} alt={displayName} />
+                  )}
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+                <article className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">{displayName}</span>
+                  {!isGuest && (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {session.user.email}
+                    </span>
+                  )}
+                </article>
+                <CaretUpDown className="ml-auto size-4" />
+              </SidebarMenuButton>
+            }
+          />
+          <DropdownMenuContent
+            side="top"
+            align="start"
+            className="w-[--trigger-width] min-w-56 rounded-lg"
+          >
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="p-0 font-normal">
+                <article className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+                  <Avatar size="sm">
+                    {session.user.image && (
+                      <AvatarImage src={session.user.image} alt={displayName} />
+                    )}
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{displayName}</span>
+                    {!isGuest && (
+                      <span className="truncate text-xs text-muted-foreground">
+                        {session.user.email}
+                      </span>
+                    )}
+                  </div>
+                </article>
+              </DropdownMenuLabel>
+            </DropdownMenuGroup>
+
+            {isGuest && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() =>
+                    authClient.signIn.social({ provider: 'spotify' })
+                  }
+                >
+                  <SpotifyLogo weight="fill" className="text-[#1DB954]" />
+                  Upgrade to Spotify
+                </DropdownMenuItem>
+              </>
+            )}
+
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+              <SignOut />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   )
 }

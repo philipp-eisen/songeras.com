@@ -9,10 +9,22 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PlaylistsRouteImport } from './routes/playlists'
+import { Route as GamesRouteImport } from './routes/games'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayGameIdRouteImport } from './routes/play.$gameId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const PlaylistsRoute = PlaylistsRouteImport.update({
+  id: '/playlists',
+  path: '/playlists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GamesRoute = GamesRouteImport.update({
+  id: '/games',
+  path: '/games',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,36 +43,64 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/games': typeof GamesRoute
+  '/playlists': typeof PlaylistsRoute
   '/play/$gameId': typeof PlayGameIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/games': typeof GamesRoute
+  '/playlists': typeof PlaylistsRoute
   '/play/$gameId': typeof PlayGameIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/games': typeof GamesRoute
+  '/playlists': typeof PlaylistsRoute
   '/play/$gameId': typeof PlayGameIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/play/$gameId' | '/api/auth/$'
+  fullPaths: '/' | '/games' | '/playlists' | '/play/$gameId' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/play/$gameId' | '/api/auth/$'
-  id: '__root__' | '/' | '/play/$gameId' | '/api/auth/$'
+  to: '/' | '/games' | '/playlists' | '/play/$gameId' | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/games'
+    | '/playlists'
+    | '/play/$gameId'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  GamesRoute: typeof GamesRoute
+  PlaylistsRoute: typeof PlaylistsRoute
   PlayGameIdRoute: typeof PlayGameIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/playlists': {
+      id: '/playlists'
+      path: '/playlists'
+      fullPath: '/playlists'
+      preLoaderRoute: typeof PlaylistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/games': {
+      id: '/games'
+      path: '/games'
+      fullPath: '/games'
+      preLoaderRoute: typeof GamesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -87,6 +127,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  GamesRoute: GamesRoute,
+  PlaylistsRoute: PlaylistsRoute,
   PlayGameIdRoute: PlayGameIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
