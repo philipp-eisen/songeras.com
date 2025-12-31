@@ -8,6 +8,7 @@ import type { Id } from './_generated/dataModel'
 
 /**
  * Get a single player's timeline with card details
+ * Uses Apple Music artwork when available
  */
 export const getPlayerTimeline = query({
   args: {
@@ -25,6 +26,7 @@ export const getPlayerTimeline = query({
           artistNames: v.array(v.string()),
           releaseYear: v.number(),
           albumImageUrl: v.optional(v.string()),
+          artworkUrl: v.optional(v.string()), // Apple Music artwork
         }),
       ),
     }),
@@ -36,13 +38,13 @@ export const getPlayerTimeline = query({
       return null
     }
 
-    const player = await ctx.db.get("gamePlayers", args.playerId)
+    const player = await ctx.db.get('gamePlayers', args.playerId)
     if (!player) {
       return null
     }
 
     // Verify access to this game
-    const game = await ctx.db.get("games", player.gameId)
+    const game = await ctx.db.get('games', player.gameId)
     if (!game) {
       return null
     }
@@ -81,13 +83,14 @@ export const getPlayerTimeline = query({
       artistNames: Array<string>
       releaseYear: number
       albumImageUrl?: string
+      artworkUrl?: string
     }> = []
 
     for (const entry of entries) {
-      const card = await ctx.db.get("gameCards", entry.cardId)
+      const card = await ctx.db.get('gameCards', entry.cardId)
       if (!card) continue
 
-      const song = await ctx.db.get("songs", card.songId)
+      const song = await ctx.db.get('songs', card.songId)
       if (!song) continue
 
       cards.push({
@@ -97,6 +100,7 @@ export const getPlayerTimeline = query({
         artistNames: song.artistNames,
         releaseYear: song.releaseYear,
         albumImageUrl: song.albumImageUrl,
+        artworkUrl: song.artworkUrl, // Apple Music artwork
       })
     }
 
@@ -110,6 +114,7 @@ export const getPlayerTimeline = query({
 
 /**
  * Get all player timelines for a game
+ * Uses Apple Music artwork when available
  */
 export const getAllTimelines = query({
   args: {
@@ -131,6 +136,7 @@ export const getAllTimelines = query({
             artistNames: v.array(v.string()),
             releaseYear: v.number(),
             albumImageUrl: v.optional(v.string()),
+            artworkUrl: v.optional(v.string()), // Apple Music artwork
           }),
         ),
       }),
@@ -143,7 +149,7 @@ export const getAllTimelines = query({
       return null
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       return null
     }
@@ -184,6 +190,7 @@ export const getAllTimelines = query({
         artistNames: Array<string>
         releaseYear: number
         albumImageUrl?: string
+        artworkUrl?: string
       }>
     }> = []
 
@@ -204,13 +211,14 @@ export const getAllTimelines = query({
         artistNames: Array<string>
         releaseYear: number
         albumImageUrl?: string
+        artworkUrl?: string
       }> = []
 
       for (const entry of entries) {
-        const card = await ctx.db.get("gameCards", entry.cardId)
+        const card = await ctx.db.get('gameCards', entry.cardId)
         if (!card) continue
 
-        const song = await ctx.db.get("songs", card.songId)
+        const song = await ctx.db.get('songs', card.songId)
         if (!song) continue
 
         cards.push({
@@ -220,6 +228,7 @@ export const getAllTimelines = query({
           artistNames: song.artistNames,
           releaseYear: song.releaseYear,
           albumImageUrl: song.albumImageUrl,
+          artworkUrl: song.artworkUrl, // Apple Music artwork
         })
       }
 
@@ -228,7 +237,8 @@ export const getAllTimelines = query({
         displayName: player.displayName,
         seatIndex: player.seatIndex,
         tokenBalance: player.tokenBalance,
-        isCurrentUser: player.kind === 'user' && player.userId === identity.subject,
+        isCurrentUser:
+          player.kind === 'user' && player.userId === identity.subject,
         cards,
       })
     }
@@ -249,7 +259,7 @@ export const getCurrentRoundSongPreview = query({
   returns: v.union(
     v.object({
       previewUrl: v.optional(v.string()),
-      spotifyUri: v.optional(v.string()),
+      appleMusicId: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -259,13 +269,17 @@ export const getCurrentRoundSongPreview = query({
       return null
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       return null
     }
 
     // Available during placement and reveal phases
-    if (game.phase !== 'awaitingPlacement' && game.phase !== 'awaitingReveal' && game.phase !== 'revealed') {
+    if (
+      game.phase !== 'awaitingPlacement' &&
+      game.phase !== 'awaitingReveal' &&
+      game.phase !== 'revealed'
+    ) {
       return null
     }
 
@@ -288,25 +302,26 @@ export const getCurrentRoundSongPreview = query({
       }
     }
 
-    const card = await ctx.db.get("gameCards", game.currentRound.cardId)
+    const card = await ctx.db.get('gameCards', game.currentRound.cardId)
     if (!card) {
       return null
     }
 
-    const song = await ctx.db.get("songs", card.songId)
+    const song = await ctx.db.get('songs', card.songId)
     if (!song) {
       return null
     }
 
     return {
       previewUrl: song.previewUrl,
-      spotifyUri: song.spotifyUri,
+      appleMusicId: song.appleMusicId,
     }
   },
 })
 
 /**
  * Get the current round's card info (only available after reveal)
+ * Includes Apple Music artwork and preview URL
  */
 export const getCurrentRoundCard = query({
   args: {
@@ -320,6 +335,7 @@ export const getCurrentRoundCard = query({
       releaseYear: v.number(),
       albumName: v.optional(v.string()),
       albumImageUrl: v.optional(v.string()),
+      artworkUrl: v.optional(v.string()), // Apple Music artwork
       previewUrl: v.optional(v.string()),
       spotifyUri: v.optional(v.string()),
     }),
@@ -331,7 +347,7 @@ export const getCurrentRoundCard = query({
       return null
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       return null
     }
@@ -360,12 +376,12 @@ export const getCurrentRoundCard = query({
       }
     }
 
-    const card = await ctx.db.get("gameCards", game.currentRound.cardId)
+    const card = await ctx.db.get('gameCards', game.currentRound.cardId)
     if (!card) {
       return null
     }
 
-    const song = await ctx.db.get("songs", card.songId)
+    const song = await ctx.db.get('songs', card.songId)
     if (!song) {
       return null
     }
@@ -377,6 +393,7 @@ export const getCurrentRoundCard = query({
       releaseYear: song.releaseYear,
       albumName: song.albumName,
       albumImageUrl: song.albumImageUrl,
+      artworkUrl: song.artworkUrl, // Apple Music artwork
       previewUrl: song.previewUrl,
       spotifyUri: song.spotifyUri,
     }

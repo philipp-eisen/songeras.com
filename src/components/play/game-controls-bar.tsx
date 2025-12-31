@@ -10,7 +10,7 @@ import {
   getCurrentRoundCardQuery,
   getCurrentRoundSongPreviewQuery,
 } from '@/lib/convex-queries'
-import { SpotifyPlayer } from '@/components/spotify-player'
+import { PreviewPlayer } from '@/components/preview-player'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface GameControlsBarProps {
@@ -68,15 +68,15 @@ export function GameControlsBar({ game }: GameControlsBarProps) {
 
   return (
     <div className="space-y-4">
-      {/* Card 1: Spotify Player */}
+      {/* Card 1: Audio Player */}
       <Card>
         <CardHeader className="py-3">
           <CardTitle className="text-base">Now Playing</CardTitle>
         </CardHeader>
         <CardContent className="pb-4">
-          <SpotifyPlayer
-            spotifyUri={songPreview?.spotifyUri}
+          <PreviewPlayer
             previewUrl={songPreview?.previewUrl}
+            appleMusicId={songPreview?.appleMusicId}
           />
         </CardContent>
       </Card>
