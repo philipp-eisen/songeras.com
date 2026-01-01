@@ -77,11 +77,11 @@ export function GameControlsBar({ game }: GameControlsBarProps) {
           <PreviewPlayer
             previewUrl={songPreview?.previewUrl}
             appleMusicId={songPreview?.appleMusicId}
+            autoPlay
           />
         </CardContent>
       </Card>
 
-      {/* Card 2: Timeline (rendered by TimelineView with its own Card wrapper) */}
       {activePlayerTimeline && (
         <TimelineView
           timeline={activePlayerTimeline}

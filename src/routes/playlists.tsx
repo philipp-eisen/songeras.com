@@ -74,7 +74,9 @@ function GuestUpgradeCTA() {
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
       <CardHeader>
-        <CardTitle className="text-lg">Connect Spotify to Import Playlists</CardTitle>
+        <CardTitle className="text-lg">
+          Connect Spotify to Import Playlists
+        </CardTitle>
         <CardDescription>
           Sign in with your Spotify account to import playlists and create games
         </CardDescription>
@@ -108,7 +110,9 @@ function ImportPlaylistCard() {
     setImporting(true)
 
     try {
-      const result = await importPlaylist({ playlistUrlOrId: playlistUrl.trim() })
+      const result = await importPlaylist({
+        playlistUrlOrId: playlistUrl.trim(),
+      })
       setSuccess(`Imported ${result.trackCount} tracks!`)
       setPlaylistUrl('')
     } catch (err) {
@@ -221,7 +225,9 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
     unmatchedTracks: number
   } | null>(null)
 
-  const resolvePlaylist = useAction(api.playlistImport.resolvePlaylistToAppleMusic)
+  const resolvePlaylist = useAction(
+    api.playlistImport.resolvePlaylistToAppleMusic,
+  )
 
   const handleResolve = async () => {
     setError(null)
@@ -236,7 +242,9 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
         unmatchedTracks: res.unmatchedTracks,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resolve playlist')
+      setError(
+        err instanceof Error ? err.message : 'Failed to resolve playlist',
+      )
     } finally {
       setResolving(false)
     }
@@ -247,9 +255,11 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
     playlist.resolutionStatus === 'completed' ||
     (result && result.matchedTracks > 0)
   const matchedCount = result?.matchedTracks ?? playlist.matchedTracks ?? 0
-  const unmatchedCount = result?.unmatchedTracks ?? playlist.unmatchedTracks ?? 0
+  const unmatchedCount =
+    result?.unmatchedTracks ?? playlist.unmatchedTracks ?? 0
   const totalTracks = playlist.trackCount
-  const matchPercentage = totalTracks > 0 ? (matchedCount / totalTracks) * 100 : 0
+  const matchPercentage =
+    totalTracks > 0 ? (matchedCount / totalTracks) * 100 : 0
 
   return (
     <li className="rounded-lg border p-3 space-y-3">
@@ -262,7 +272,10 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
           />
         ) : (
           <figure className="flex size-12 items-center justify-center rounded bg-muted shrink-0">
-            <MusicNotes weight="duotone" className="size-6 text-muted-foreground" />
+            <MusicNotes
+              weight="duotone"
+              className="size-6 text-muted-foreground"
+            />
           </figure>
         )}
         <article className="flex-1 min-w-0">
@@ -319,7 +332,9 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
       {isResolved && matchedCount > 0 && (
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Apple Music match rate</span>
+            <span className="text-muted-foreground">
+              Apple Music match rate
+            </span>
             <span className="font-medium">
               {matchedCount}/{totalTracks} ({matchPercentage.toFixed(0)}%)
             </span>
@@ -328,7 +343,8 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
           {unmatchedCount > 0 && (
             <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
               <Warning weight="fill" className="size-3" />
-              {unmatchedCount} track{unmatchedCount !== 1 && 's'} couldn't be matched
+              {unmatchedCount} track{unmatchedCount !== 1 && 's'} couldn't be
+              matched
             </p>
           )}
         </div>
@@ -342,4 +358,3 @@ function PlaylistItem({ playlist }: { playlist: PlaylistData }) {
     </li>
   )
 }
-

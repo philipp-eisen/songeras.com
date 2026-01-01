@@ -1,5 +1,10 @@
-import { useCallback } from 'react'
-import { AppleLogo, MusicNoteIcon, PauseIcon, PlayIcon } from '@phosphor-icons/react'
+import { useCallback, useEffect, useRef } from 'react'
+import {
+  AppleLogo,
+  MusicNoteIcon,
+  PauseIcon,
+  PlayIcon,
+} from '@phosphor-icons/react'
 import type { ChangeEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { formatTime, usePreviewPlayback } from '@/hooks/use-preview-playback'
@@ -13,6 +18,7 @@ interface PreviewPlayerProps {
   artist?: string
   className?: string
   compact?: boolean
+  autoPlay?: boolean
 }
 
 /**
@@ -35,15 +41,32 @@ export function PreviewPlayer({
   artist,
   className,
   compact = false,
+  autoPlay = false,
 }: PreviewPlayerProps) {
   const appleMusicUrl = appleMusicId ? getAppleMusicUrl(appleMusicId) : null
-  const { state, togglePlayPause, seek, currentUrl } = usePreviewPlayback()
+  const { state, play, togglePlayPause, seek, currentUrl } =
+    usePreviewPlayback()
+
+  // Track the last auto-played URL to avoid replaying the same track
+  const lastAutoPlayedUrl = useRef<string | null>(null)
 
   const isCurrentTrack = currentUrl === previewUrl
   const isPlaying = isCurrentTrack && state.isPlaying
   const isLoading = isCurrentTrack && state.isLoading
   const currentTime = isCurrentTrack ? state.currentTime : 0
   const duration = isCurrentTrack ? state.duration : 30 // Default to 30s for previews
+
+  // Auto-play when previewUrl changes
+  useEffect(() => {
+    if (autoPlay && previewUrl && previewUrl !== lastAutoPlayedUrl.current) {
+      lastAutoPlayedUrl.current = previewUrl
+      // Small delay to ensure component is mounted
+      const timer = setTimeout(() => {
+        play(previewUrl)
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [autoPlay, previewUrl, play])
 
   const handleToggle = useCallback(() => {
     if (previewUrl) {
@@ -147,9 +170,15 @@ export function PreviewPlayer({
             />
             <div className="absolute inset-0 flex items-center justify-center">
               {isPlaying ? (
-                <PauseIcon weight="fill" className="h-5 w-5 text-white drop-shadow" />
+                <PauseIcon
+                  weight="fill"
+                  className="h-5 w-5 text-white drop-shadow"
+                />
               ) : (
-                <PlayIcon weight="fill" className="h-5 w-5 text-white drop-shadow" />
+                <PlayIcon
+                  weight="fill"
+                  className="h-5 w-5 text-white drop-shadow"
+                />
               )}
             </div>
           </div>
@@ -166,7 +195,9 @@ export function PreviewPlayer({
         {(title || artist) && (
           <div className="flex items-center gap-1 text-xs truncate">
             {title && <span className="font-medium truncate">{title}</span>}
-            {title && artist && <span className="text-muted-foreground">•</span>}
+            {title && artist && (
+              <span className="text-muted-foreground">•</span>
+            )}
             {artist && (
               <span className="text-muted-foreground truncate">{artist}</span>
             )}
@@ -205,7 +236,9 @@ export function PreviewPlayer({
           <AppleLogo weight="fill" className="h-5 w-5" />
         </a>
       ) : (
-        <span className="text-[10px] text-muted-foreground shrink-0">preview</span>
+        <span className="text-[10px] text-muted-foreground shrink-0">
+          preview
+        </span>
       )}
     </div>
   )
@@ -223,4 +256,3 @@ export function PreviewPlayButton({
 }) {
   return <PreviewPlayer previewUrl={previewUrl} compact className={className} />
 }
-

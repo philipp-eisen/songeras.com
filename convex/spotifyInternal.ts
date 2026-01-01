@@ -92,7 +92,6 @@ export const updateSpotifyTokens = internalMutation({
 
 /**
  * Upsert a song (by spotifyTrackId)
- * Now supports ISRC and marks as needing Apple Music resolution
  */
 export const upsertSong = internalMutation({
   args: {

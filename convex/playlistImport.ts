@@ -54,7 +54,10 @@ export const resolveSongToAppleMusic = internalAction({
       reason: v.string(),
     }),
   ),
-  handler: async (ctx, args): Promise<
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
     | {
         matched: true
         appleMusicId: string
@@ -74,10 +77,13 @@ export const resolveSongToAppleMusic = internalAction({
     // Step 1: Try ISRC lookup (most reliable)
     if (args.isrc) {
       try {
-        const isrcResult = await ctx.runAction(internal.appleMusic.searchByISRC, {
-          isrc: args.isrc,
-          storefront,
-        })
+        const isrcResult = await ctx.runAction(
+          internal.appleMusic.searchByISRC,
+          {
+            isrc: args.isrc,
+            storefront,
+          },
+        )
 
         if (isrcResult) {
           return {
@@ -94,18 +100,24 @@ export const resolveSongToAppleMusic = internalAction({
           }
         }
       } catch (error) {
-        console.warn('[Resolution] ISRC lookup failed, trying text search:', error)
+        console.warn(
+          '[Resolution] ISRC lookup failed, trying text search:',
+          error,
+        )
       }
     }
 
     // Step 2: Fall back to text search
     try {
       const searchQuery = `${args.title} ${args.artist}`
-      const searchResults = await ctx.runAction(internal.appleMusic.searchCatalog, {
-        query: searchQuery,
-        storefront,
-        limit: 5,
-      })
+      const searchResults = await ctx.runAction(
+        internal.appleMusic.searchCatalog,
+        {
+          query: searchQuery,
+          storefront,
+          limit: 5,
+        },
+      )
 
       if (searchResults.length === 0) {
         return { matched: false, reason: 'No results found' }
@@ -225,15 +237,21 @@ export const resolvePlaylistToAppleMusic = action({
     const storefront = args.storefront ?? 'us'
 
     // Mark playlist as in progress
-    await ctx.runMutation(internal.spotifyInternal.updatePlaylistResolutionStatus, {
-      playlistId: args.playlistId,
-      status: 'inProgress',
-    })
+    await ctx.runMutation(
+      internal.spotifyInternal.updatePlaylistResolutionStatus,
+      {
+        playlistId: args.playlistId,
+        status: 'inProgress',
+      },
+    )
 
     // Get all songs in the playlist
-    const songs = await ctx.runQuery(internal.spotifyInternal.getPlaylistSongs, {
-      playlistId: args.playlistId,
-    })
+    const songs = await ctx.runQuery(
+      internal.spotifyInternal.getPlaylistSongs,
+      {
+        playlistId: args.playlistId,
+      },
+    )
 
     let matchedCount = 0
     let unmatchedCount = 0
@@ -241,34 +259,43 @@ export const resolvePlaylistToAppleMusic = action({
     // Process each song
     for (const song of songs) {
       // Skip if already resolved to Apple Music
-      if (song.resolvedFrom === 'spotifyToApple' || song.resolvedFrom === 'appleMusic') {
+      if (
+        song.resolvedFrom === 'spotifyToApple' ||
+        song.resolvedFrom === 'appleMusic'
+      ) {
         matchedCount++
         continue
       }
 
       // Attempt to resolve to Apple Music
-      const result = await ctx.runAction(internal.playlistImport.resolveSongToAppleMusic, {
-        songId: song.songId,
-        isrc: song.isrc,
-        title: song.title,
-        artist: song.artistNames[0] ?? 'Unknown Artist',
-        storefront,
-      })
+      const result = await ctx.runAction(
+        internal.playlistImport.resolveSongToAppleMusic,
+        {
+          songId: song.songId,
+          isrc: song.isrc,
+          title: song.title,
+          artist: song.artistNames[0] ?? 'Unknown Artist',
+          storefront,
+        },
+      )
 
       if (result.matched) {
         // Update the song with Apple Music data
-        await ctx.runMutation(internal.spotifyInternal.updateSongWithAppleMusic, {
-          songId: song.songId,
-          appleMusicId: result.appleMusicId,
-          title: result.title,
-          artistName: result.artistName,
-          albumName: result.albumName,
-          releaseYear: result.releaseYear,
-          releaseDate: result.releaseDate,
-          previewUrl: result.previewUrl,
-          artworkUrl: result.artworkUrl,
-          isrc: result.isrc,
-        })
+        await ctx.runMutation(
+          internal.spotifyInternal.updateSongWithAppleMusic,
+          {
+            songId: song.songId,
+            appleMusicId: result.appleMusicId,
+            title: result.title,
+            artistName: result.artistName,
+            albumName: result.albumName,
+            releaseYear: result.releaseYear,
+            releaseDate: result.releaseDate,
+            previewUrl: result.previewUrl,
+            artworkUrl: result.artworkUrl,
+            isrc: result.isrc,
+          },
+        )
         matchedCount++
       } else {
         console.warn(
@@ -282,12 +309,15 @@ export const resolvePlaylistToAppleMusic = action({
     }
 
     // Mark playlist as completed
-    await ctx.runMutation(internal.spotifyInternal.updatePlaylistResolutionStatus, {
-      playlistId: args.playlistId,
-      status: 'completed',
-      matchedTracks: matchedCount,
-      unmatchedTracks: unmatchedCount,
-    })
+    await ctx.runMutation(
+      internal.spotifyInternal.updatePlaylistResolutionStatus,
+      {
+        playlistId: args.playlistId,
+        status: 'completed',
+        matchedTracks: matchedCount,
+        unmatchedTracks: unmatchedCount,
+      },
+    )
 
     return {
       totalTracks: songs.length,
@@ -353,4 +383,3 @@ export const getPlaylistResolutionStatus = action({
     }
   },
 })
-

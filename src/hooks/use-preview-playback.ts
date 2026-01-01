@@ -151,40 +151,43 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
   /**
    * Play a preview URL
    */
-  const play = useCallback(async (url: string) => {
-    const audio = audioRef.current
-    if (!audio) return
+  const play = useCallback(
+    async (url: string) => {
+      const audio = audioRef.current
+      if (!audio) return
 
-    // If it's a different URL, load the new track
-    if (url !== currentUrl) {
-      audio.src = url
-      setCurrentUrl(url)
-      setState((prev) => ({
-        ...prev,
-        currentTime: 0,
-        duration: 0,
-        error: null,
-      }))
-    }
-
-    try {
-      await audio.play()
-    } catch (error) {
-      // Handle autoplay restrictions
-      if (error instanceof DOMException && error.name === 'NotAllowedError') {
+      // If it's a different URL, load the new track
+      if (url !== currentUrl) {
+        audio.src = url
+        setCurrentUrl(url)
         setState((prev) => ({
           ...prev,
-          error: 'Playback blocked. Please click to play.',
-        }))
-      } else {
-        console.error('[PreviewPlayback] Play error:', error)
-        setState((prev) => ({
-          ...prev,
-          error: 'Failed to start playback',
+          currentTime: 0,
+          duration: 0,
+          error: null,
         }))
       }
-    }
-  }, [currentUrl])
+
+      try {
+        await audio.play()
+      } catch (error) {
+        // Handle autoplay restrictions
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+          setState((prev) => ({
+            ...prev,
+            error: 'Playback blocked. Please click to play.',
+          }))
+        } else {
+          console.error('[PreviewPlayback] Play error:', error)
+          setState((prev) => ({
+            ...prev,
+            error: 'Failed to start playback',
+          }))
+        }
+      }
+    },
+    [currentUrl],
+  )
 
   /**
    * Pause playback
@@ -270,4 +273,3 @@ export function formatTime(seconds: number): string {
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
-
