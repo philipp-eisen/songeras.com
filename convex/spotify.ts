@@ -124,6 +124,7 @@ function createSpotifySdk(accessToken: string): SpotifyApi {
 
 /**
  * Fetch all tracks from a playlist (handles pagination)
+ * Now includes external_ids for ISRC
  */
 async function fetchAllPlaylistTracks(
   sdk: SpotifyApi,
@@ -138,7 +139,7 @@ async function fetchAllPlaylistTracks(
     const page = await sdk.playlists.getPlaylistItems(
       playlistId,
       undefined, // market
-      'items(track(id,name,artists(name),album(name,release_date,images),preview_url,uri)),next,total',
+      'items(track(id,name,artists(name),album(name,release_date,images),preview_url,uri,external_ids)),next,total',
       limit as 50,
       offset,
     )
@@ -319,6 +320,7 @@ export const importSpotifyPlaylist = action({
         }
         preview_url: string | null
         uri: string
+        external_ids?: { isrc?: string }
       }
 
       const songId = await ctx.runMutation(
@@ -332,6 +334,7 @@ export const importSpotifyPlaylist = action({
           spotifyUri: track.uri,
           albumName: track.album.name,
           albumImageUrl: track.album.images[0]?.url,
+          isrc: track.external_ids?.isrc, // ISRC for Apple Music matching
         },
       )
 
@@ -341,6 +344,17 @@ export const importSpotifyPlaylist = action({
         position: i,
       })
     }
+
+    // Mark playlist for Apple Music resolution
+    await ctx.runMutation(
+      internal.spotifyInternal.updatePlaylistResolutionStatus,
+      {
+        playlistId,
+        status: 'pending',
+        matchedTracks: 0,
+        unmatchedTracks: 0,
+      },
+    )
 
     return {
       playlistId,

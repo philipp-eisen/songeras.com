@@ -49,16 +49,35 @@ export default defineSchema({
   // Spotify Playlist Import Tables
   // ============================================
 
-  // Imported Spotify playlists owned by authenticated users
+  // Imported playlists owned by authenticated users
+  // Supports both Spotify and Apple Music sources
   spotifyPlaylists: defineTable({
     ownerUserId: v.string(), // Better Auth user ID
-    spotifyPlaylistId: v.string(), // Spotify's playlist ID
+    spotifyPlaylistId: v.string(), // Spotify's playlist ID (kept as primary key for now)
     name: v.string(),
     description: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     trackCount: v.number(),
     snapshotId: v.string(), // Spotify's version identifier
     importedAt: v.number(), // Timestamp
+
+    // Source provider tracking
+    sourceProvider: v.optional(
+      v.union(v.literal('spotify'), v.literal('appleMusic')),
+    ), // Defaults to 'spotify' for backwards compat
+
+    // Apple Music resolution stats
+    matchedTracks: v.optional(v.number()), // Successfully resolved to Apple Music
+    unmatchedTracks: v.optional(v.number()), // Couldn't find on Apple Music
+    resolutionStatus: v.optional(
+      v.union(
+        v.literal('pending'), // Not yet resolved
+        v.literal('inProgress'), // Currently resolving
+        v.literal('completed'), // All tracks processed
+        v.literal('failed'), // Resolution failed
+      ),
+    ),
+    lastResolvedAt: v.optional(v.number()), // Timestamp of last resolution attempt
   })
     .index('by_ownerUserId', ['ownerUserId'])
     .index('by_ownerUserId_and_spotifyPlaylistId', [
@@ -66,17 +85,45 @@ export default defineSchema({
       'spotifyPlaylistId',
     ]),
 
-  // Unique Spotify tracks (deduplicated across playlists)
+  // Unique tracks (deduplicated across playlists)
+  // Apple Music is the source of truth for metadata when resolved
   songs: defineTable({
-    spotifyTrackId: v.string(),
+    // Core identity - at least one of these should be set
+    spotifyTrackId: v.optional(v.string()), // Original Spotify ID (if imported from Spotify)
+    appleMusicId: v.optional(v.string()), // Apple Music catalog ID (source of truth)
+
+    // Cross-provider matching
+    isrc: v.optional(v.string()), // International Standard Recording Code
+
+    // Track metadata (from Apple Music when resolved)
     title: v.string(),
     artistNames: v.array(v.string()),
     releaseYear: v.number(),
-    previewUrl: v.optional(v.string()), // 30s preview if available
-    spotifyUri: v.optional(v.string()), // spotify:track:xxx
+    releaseDate: v.optional(v.string()), // YYYY-MM-DD from Apple Music
     albumName: v.optional(v.string()),
+
+    // Playback
+    previewUrl: v.optional(v.string()), // Apple Music preview URL (30s)
+    spotifyUri: v.optional(v.string()), // spotify:track:xxx (for optional Spotify playback)
+
+    // Artwork
+    artworkUrl: v.optional(v.string()), // Apple Music artwork URL
+
+    // Legacy Spotify image (kept for backwards compatibility)
     albumImageUrl: v.optional(v.string()),
-  }).index('by_spotifyTrackId', ['spotifyTrackId']),
+
+    // Provider tracking
+    resolvedFrom: v.optional(
+      v.union(
+        v.literal('spotify'), // Original Spotify import (not yet resolved)
+        v.literal('appleMusic'), // Direct Apple Music import
+        v.literal('spotifyToApple'), // Spotify import resolved to Apple Music
+      ),
+    ),
+  })
+    .index('by_spotifyTrackId', ['spotifyTrackId'])
+    .index('by_appleMusicId', ['appleMusicId'])
+    .index('by_isrc', ['isrc']),
 
   // Many-to-many: playlist → songs with ordering
   playlistSongs: defineTable({

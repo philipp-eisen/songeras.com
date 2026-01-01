@@ -3,6 +3,7 @@ import { query } from './_generated/server'
 
 /**
  * List all playlists owned by the current user
+ * Includes Apple Music resolution status
  */
 export const listMine = query({
   args: {},
@@ -15,6 +16,17 @@ export const listMine = query({
       imageUrl: v.optional(v.string()),
       trackCount: v.number(),
       importedAt: v.number(),
+      // Apple Music resolution status
+      resolutionStatus: v.optional(
+        v.union(
+          v.literal('pending'),
+          v.literal('inProgress'),
+          v.literal('completed'),
+          v.literal('failed'),
+        ),
+      ),
+      matchedTracks: v.optional(v.number()),
+      unmatchedTracks: v.optional(v.number()),
     }),
   ),
   handler: async (ctx) => {
@@ -36,12 +48,16 @@ export const listMine = query({
       imageUrl: p.imageUrl,
       trackCount: p.trackCount,
       importedAt: p.importedAt,
+      resolutionStatus: p.resolutionStatus,
+      matchedTracks: p.matchedTracks,
+      unmatchedTracks: p.unmatchedTracks,
     }))
   },
 })
 
 /**
  * Get a specific playlist by ID (includes song list)
+ * Now includes Apple Music resolved data
  */
 export const get = query({
   args: { playlistId: v.id('spotifyPlaylists') },
@@ -52,6 +68,14 @@ export const get = query({
       description: v.optional(v.string()),
       imageUrl: v.optional(v.string()),
       trackCount: v.number(),
+      resolutionStatus: v.optional(
+        v.union(
+          v.literal('pending'),
+          v.literal('inProgress'),
+          v.literal('completed'),
+          v.literal('failed'),
+        ),
+      ),
       songs: v.array(
         v.object({
           _id: v.id('songs'),
@@ -60,6 +84,17 @@ export const get = query({
           releaseYear: v.number(),
           albumName: v.optional(v.string()),
           albumImageUrl: v.optional(v.string()),
+          // Apple Music data
+          appleMusicId: v.optional(v.string()),
+          artworkUrl: v.optional(v.string()),
+          previewUrl: v.optional(v.string()),
+          resolvedFrom: v.optional(
+            v.union(
+              v.literal('spotify'),
+              v.literal('appleMusic'),
+              v.literal('spotifyToApple'),
+            ),
+          ),
         }),
       ),
     }),
@@ -71,7 +106,7 @@ export const get = query({
       return null
     }
 
-    const playlist = await ctx.db.get("spotifyPlaylists", args.playlistId)
+    const playlist = await ctx.db.get('spotifyPlaylists', args.playlistId)
     if (!playlist || playlist.ownerUserId !== identity.subject) {
       return null
     }
@@ -79,7 +114,9 @@ export const get = query({
     // Get all songs in order
     const playlistSongs = await ctx.db
       .query('playlistSongs')
-      .withIndex('by_playlistId_and_position', (q) => q.eq('playlistId', args.playlistId))
+      .withIndex('by_playlistId_and_position', (q) =>
+        q.eq('playlistId', args.playlistId),
+      )
       .collect()
 
     // Sort by position (in case index doesn't guarantee order)
@@ -87,16 +124,20 @@ export const get = query({
 
     // Fetch song details
     const songs: Array<{
-      _id: typeof playlistSongs[0]['songId']
+      _id: (typeof playlistSongs)[0]['songId']
       title: string
       artistNames: Array<string>
       releaseYear: number
       albumName?: string
       albumImageUrl?: string
+      appleMusicId?: string
+      artworkUrl?: string
+      previewUrl?: string
+      resolvedFrom?: 'spotify' | 'appleMusic' | 'spotifyToApple'
     }> = []
 
     for (const ps of playlistSongs) {
-      const song = await ctx.db.get("songs", ps.songId)
+      const song = await ctx.db.get('songs', ps.songId)
       if (song) {
         songs.push({
           _id: song._id,
@@ -105,6 +146,11 @@ export const get = query({
           releaseYear: song.releaseYear,
           albumName: song.albumName,
           albumImageUrl: song.albumImageUrl,
+          // Apple Music data (if resolved)
+          appleMusicId: song.appleMusicId,
+          artworkUrl: song.artworkUrl,
+          previewUrl: song.previewUrl,
+          resolvedFrom: song.resolvedFrom,
         })
       }
     }
@@ -115,8 +161,8 @@ export const get = query({
       description: playlist.description,
       imageUrl: playlist.imageUrl,
       trackCount: playlist.trackCount,
+      resolutionStatus: playlist.resolutionStatus,
       songs,
     }
   },
 })
-

@@ -8,9 +8,11 @@
  * @module
  */
 
+import type * as appleMusic from "../appleMusic.js";
 import type * as auth from "../auth.js";
 import type * as games from "../games.js";
 import type * as http from "../http.js";
+import type * as playlistImport from "../playlistImport.js";
 import type * as playlists from "../playlists.js";
 import type * as spotify from "../spotify.js";
 import type * as spotifyInternal from "../spotifyInternal.js";
@@ -24,9 +26,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  appleMusic: typeof appleMusic;
   auth: typeof auth;
   games: typeof games;
   http: typeof http;
+  playlistImport: typeof playlistImport;
   playlists: typeof playlists;
   spotify: typeof spotify;
   spotifyInternal: typeof spotifyInternal;
