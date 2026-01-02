@@ -3,3 +3,12 @@ alwaysApply: true
 ---
 
 Always run tsc and lint after you made changes.
+
+## Icon Naming Convention
+
+When importing icons from `@phosphor-icons/react`, always use the "Icon" suffix in the import name. For example:
+
+- ✅ `SpotifyLogoIcon` (correct)
+- ❌ `SpotifyLogo` (deprecated - do not use)
+
+All icon imports from `@phosphor-icons/react` must end with "Icon" to maintain consistency across the codebase.

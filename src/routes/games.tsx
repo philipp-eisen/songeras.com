@@ -2,7 +2,11 @@ import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMutation } from 'convex/react'
 import { useState } from 'react'
-import { DotsThreeVertical, GameController, Trash } from '@phosphor-icons/react'
+import {
+  DotsThreeVerticalIcon,
+  GameControllerIcon,
+  TrashIcon,
+} from '@phosphor-icons/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { listMyGamesQuery } from '@/lib/convex-queries'
@@ -57,7 +61,7 @@ function GamesPage() {
   return (
     <section className="mx-auto max-w-4xl space-y-6 p-6">
       <header className="flex items-center gap-3">
-        <GameController weight="duotone" className="size-8 text-primary" />
+        <GameControllerIcon weight="duotone" className="size-8 text-primary" />
         <div>
           <h1 className="text-2xl font-bold">My Games</h1>
           <p className="text-muted-foreground">
@@ -69,7 +73,7 @@ function GamesPage() {
       {games.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <GameController
+            <GameControllerIcon
               weight="duotone"
               className="mb-4 size-16 text-muted-foreground/50"
             />
@@ -128,7 +132,7 @@ function GamesPage() {
                             className="h-8 w-8 p-0"
                             disabled={deleting === game._id}
                           >
-                            <DotsThreeVertical weight="bold" className="h-4 w-4" />
+                            <DotsThreeVerticalIcon weight="bold" className="h-4 w-4" />
                           </Button>
                         }
                       />
@@ -140,7 +144,7 @@ function GamesPage() {
                             handleDelete(game._id)
                           }}
                         >
-                          <Trash weight="duotone" className="mr-2 h-4 w-4" />
+                          <TrashIcon weight="duotone" className="mr-2 h-4 w-4" />
                           Delete Game
                         </DropdownMenuItem>
                       </DropdownMenuContent>

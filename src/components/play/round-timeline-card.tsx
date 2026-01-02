@@ -1,7 +1,7 @@
 import {
   CheckCircleIcon,
   SealQuestionIcon,
-  SpotifyLogo,
+  SpotifyLogoIcon,
   XCircleIcon,
 } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -199,7 +199,7 @@ function RevealedCardFace({
             className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground hover:text-spotify"
             onClick={(e) => e.stopPropagation()}
           >
-            <SpotifyLogo weight="fill" className="size-3" />
+            <SpotifyLogoIcon weight="fill" className="size-3" />
             Open
           </a>
         )}

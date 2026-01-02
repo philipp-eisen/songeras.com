@@ -1,4 +1,4 @@
-import { SpotifyLogo } from '@phosphor-icons/react'
+import { SpotifyLogoIcon } from '@phosphor-icons/react'
 import { authClient } from '@/lib/auth-client'
 import {
   Card,
@@ -28,7 +28,7 @@ export function SpotifyLogin() {
           onClick={handleSpotifyLogin}
           className="w-full bg-spotify text-spotify-foreground hover:bg-spotify/90"
         >
-          <SpotifyLogo weight="duotone" className="mr-2 size-5" />
+          <SpotifyLogoIcon weight="duotone" className="mr-2 size-5" />
           Log in with Spotify
         </Button>
       </CardContent>

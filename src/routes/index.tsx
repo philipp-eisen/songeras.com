@@ -2,7 +2,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMutation } from 'convex/react'
 import { useState } from 'react'
-import { ArrowsClockwise, SpotifyLogo } from '@phosphor-icons/react'
+import { ArrowsClockwiseIcon, SpotifyLogoIcon } from '@phosphor-icons/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { listMyPlaylistsQuery } from '@/lib/convex-queries'
@@ -171,7 +171,7 @@ function LoginCTA({ isGuest }: LoginCTAProps) {
           className="w-full max-w-xs bg-spotify text-spotify-foreground hover:bg-spotify/90"
           size="lg"
         >
-          <SpotifyLogo weight="fill" className="mr-2 h-5 w-5" />
+          <SpotifyLogoIcon weight="fill" className="mr-2 h-5 w-5" />
           Sign in with Spotify
         </Button>
         {!isGuest && (
@@ -292,7 +292,7 @@ function CreateGameSection() {
               </p>
               {processingPlaylists.length > 0 && (
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <ArrowsClockwise className="size-4 animate-spin" />
+                  <ArrowsClockwiseIcon className="size-4 animate-spin" />
                   {processingPlaylists.length} playlist
                   {processingPlaylists.length !== 1 && 's'} still processing...
                 </p>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import {
-  AppleLogo,
+  AppleLogoIcon,
   MusicNoteIcon,
   PauseIcon,
   PlayIcon,
@@ -233,7 +233,7 @@ export function PreviewPlayer({
           className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
           title="Open in Apple Music"
         >
-          <AppleLogo weight="fill" className="h-5 w-5" />
+          <AppleLogoIcon weight="fill" className="h-5 w-5" />
         </a>
       ) : (
         <span className="text-[10px] text-muted-foreground shrink-0">
