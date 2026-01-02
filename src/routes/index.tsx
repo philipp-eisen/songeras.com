@@ -103,8 +103,8 @@ function JoinGameSection() {
     setJoining(true)
 
     try {
-      const result = await joinByCode({ joinCode: joinCode.trim() })
-      navigate({ to: '/play/$gameId', params: { gameId: result.gameId } })
+      await joinByCode({ joinCode: joinCode.trim() })
+      navigate({ to: '/play/$joinCode', params: { joinCode: joinCode.trim().toUpperCase() } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game')
     } finally {
@@ -247,7 +247,7 @@ function CreateGameSection() {
         playerNames:
           mode === 'hostOnly' ? playerNames.filter((n) => n.trim()) : undefined,
       })
-      navigate({ to: '/play/$gameId', params: { gameId: result.gameId } })
+      navigate({ to: '/play/$joinCode', params: { joinCode: result.joinCode } })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create game')
     } finally {

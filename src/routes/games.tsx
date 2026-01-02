@@ -99,8 +99,8 @@ function GamesPage() {
                 className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
               >
                 <Link
-                  to="/play/$gameId"
-                  params={{ gameId: game._id }}
+                  to="/play/$joinCode"
+                  params={{ joinCode: game.joinCode }}
                   className="flex-1"
                 >
                   <p className="font-medium">
