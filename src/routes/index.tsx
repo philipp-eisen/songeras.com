@@ -161,8 +161,7 @@ function LoginCTA({ isGuest }: LoginCTAProps) {
           {isGuest ? 'Upgrade to Create Games' : 'Want to host your own game?'}
         </CardTitle>
         <CardDescription className="text-base">
-          Sign in with Spotify to import playlists and create games for your
-          friends
+          Sign in with Spotify to create games for your friends
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-3">

@@ -4,28 +4,8 @@ import { SpotifyApi } from '@spotify/web-api-ts-sdk'
 import { v } from 'convex/values'
 import { action } from './_generated/server'
 import { internal } from './_generated/api'
-import type { AccessToken, PlaylistedTrack } from '@spotify/web-api-ts-sdk'
+import type { PlaylistedTrack } from '@spotify/web-api-ts-sdk'
 import type { Id } from './_generated/dataModel'
-
-// ===========================================
-// Constants
-// ===========================================
-
-/**
- * Refresh tokens this many milliseconds before they expire.
- * This prevents handing clients tokens that are about to expire.
- * 5 minutes = 300,000 ms
- */
-const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000
-
-/**
- * Check if a token needs refreshing (expired or expiring soon)
- */
-function tokenNeedsRefresh(expiresAt: number | null | undefined): boolean {
-  if (!expiresAt) return true
-  const now = Date.now()
-  return expiresAt < now + TOKEN_REFRESH_BUFFER_MS
-}
 
 // ===========================================
 // Helper functions
@@ -65,9 +45,11 @@ function parseSpotifyPlaylistId(input: string): string {
 }
 
 /**
- * Refresh Spotify access token using the refresh token
+ * Get an access token using Spotify's Client Credentials flow.
+ * This allows accessing public resources (like public playlists) without user authorization.
+ * @see https://developer.spotify.com/documentation/web-api/tutorials/client-credentials-flow
  */
-async function refreshSpotifyToken(refreshToken: string): Promise<AccessToken> {
+async function getClientCredentialsToken(): Promise<string> {
   const clientId = process.env.SPOTIFY_CLIENT_ID
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET
 
@@ -82,26 +64,19 @@ async function refreshSpotifyToken(refreshToken: string): Promise<AccessToken> {
       Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
     },
     body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
+      grant_type: 'client_credentials',
     }),
   })
 
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(
-      `Failed to refresh Spotify token: ${response.status} ${errorText}`,
+      `Failed to get Spotify client credentials token: ${response.status} ${errorText}`,
     )
   }
 
   const data = await response.json()
-
-  return {
-    access_token: data.access_token,
-    token_type: data.token_type,
-    expires_in: data.expires_in,
-    refresh_token: data.refresh_token ?? refreshToken,
-  }
+  return data.access_token
 }
 
 /**
@@ -113,12 +88,12 @@ function createSpotifySdk(accessToken: string): SpotifyApi {
     throw new Error('Missing SPOTIFY_CLIENT_ID environment variable')
   }
 
-  // Create SDK with the existing access token
+  // Create SDK with the access token
   return SpotifyApi.withAccessToken(clientId, {
     access_token: accessToken,
     token_type: 'Bearer',
-    expires_in: 3600, // We handle refresh separately
-    refresh_token: '', // Not needed for API calls
+    expires_in: 3600,
+    refresh_token: '',
   })
 }
 
@@ -168,7 +143,7 @@ export const importSpotifyPlaylist = action({
     ctx,
     args,
   ): Promise<{ playlistId: Id<'playlists'>; trackCount: number }> => {
-    // Get the current user
+    // Get the current user (needed to set playlist ownership)
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) {
       throw new Error('Not authenticated')
@@ -176,34 +151,9 @@ export const importSpotifyPlaylist = action({
 
     const userId = identity.subject
 
-    // Get the Spotify account tokens
-    const account = await ctx.runQuery(
-      internal.spotifyInternal.getSpotifyAccount,
-      { userId },
-    )
-    if (!account || !account.accessToken || !account.refreshToken) {
-      throw new Error('No Spotify account linked. Please sign in with Spotify.')
-    }
-
-    let accessToken = account.accessToken
-
-    // Check if token is expired or expiring soon and refresh if needed
-    if (tokenNeedsRefresh(account.accessTokenExpiresAt)) {
-      console.log('Spotify token expired or expiring soon, refreshing...')
-      const newTokens = await refreshSpotifyToken(account.refreshToken)
-
-      const now = Date.now()
-      accessToken = newTokens.access_token
-      const expiresAt = now + newTokens.expires_in * 1000
-
-      // Update stored tokens
-      await ctx.runMutation(internal.spotifyInternal.updateSpotifyTokens, {
-        userId,
-        accessToken: newTokens.access_token,
-        accessTokenExpiresAt: expiresAt,
-        refreshToken: newTokens.refresh_token,
-      })
-    }
+    // Get an app-level access token using Client Credentials flow
+    // This allows importing any public playlist without requiring user's Spotify login
+    const accessToken = await getClientCredentialsToken()
 
     // Create authenticated Spotify SDK
     const sdk = createSpotifySdk(accessToken)

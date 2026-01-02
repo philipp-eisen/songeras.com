@@ -8,13 +8,11 @@ import {
   MusicNotesIcon,
   PlaylistIcon,
   PlusIcon,
-  SpotifyLogoIcon,
   WarningIcon,
   XCircleIcon,
 } from '@phosphor-icons/react'
 import { api } from '../../convex/_generated/api'
 import { listMyPlaylistsQuery } from '@/lib/convex-queries'
-import { authClient } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -41,10 +39,7 @@ export const Route = createFileRoute('/playlists')({
 })
 
 function PlaylistsPage() {
-  const { data: session } = authClient.useSession()
   const { data: playlists } = useSuspenseQuery(listMyPlaylistsQuery())
-
-  const isGuest = session?.user.email.includes('guest.songgame.local')
 
   return (
     <section className="mx-auto max-w-4xl space-y-6 p-6">
@@ -53,44 +48,14 @@ function PlaylistsPage() {
         <div>
           <h1 className="text-2xl font-bold">Playlists</h1>
           <p className="text-muted-foreground">
-            Import Spotify playlists to use in your games
+            Import public Spotify playlists to use in your games
           </p>
         </div>
       </header>
 
-      {isGuest ? (
-        <GuestUpgradeCTA />
-      ) : (
-        <>
-          <ImportPlaylistCard />
-          <PlaylistsList playlists={playlists} />
-        </>
-      )}
+      <ImportPlaylistCard />
+      <PlaylistsList playlists={playlists} />
     </section>
-  )
-}
-
-function GuestUpgradeCTA() {
-  return (
-    <Card className="border-primary/20 bg-linear-to-br from-primary/5 to-primary/10">
-      <CardHeader>
-        <CardTitle className="text-lg">
-          Connect Spotify to Import Playlists
-        </CardTitle>
-        <CardDescription>
-          Sign in with your Spotify account to import playlists and create games
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Button
-          onClick={() => authClient.signIn.social({ provider: 'spotify' })}
-          className="bg-spotify text-spotify-foreground hover:bg-spotify/90"
-        >
-          <SpotifyLogoIcon weight="fill" className="mr-2 h-4 w-4" />
-          Connect Spotify
-        </Button>
-      </CardContent>
-    </Card>
   )
 }
 
@@ -132,7 +97,7 @@ function ImportPlaylistCard() {
           Import Playlist
         </CardTitle>
         <CardDescription>
-          Paste a Spotify playlist URL or ID to import it. Tracks are
+          Paste a public Spotify playlist URL or ID to import it. Tracks are
           automatically matched to Apple Music for playback.
         </CardDescription>
       </CardHeader>
@@ -160,7 +125,7 @@ function ImportPlaylistCard() {
           </p>
         )}
         {success && (
-          <p className="text-sm text-success" role="status">
+          <p className="text-sm text-primary" role="status">
             {success}
           </p>
         )}
