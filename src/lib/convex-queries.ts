@@ -20,6 +20,9 @@ export const listMyGamesQuery = () => convexQuery(api.games.listMine, {})
 export const getGameQuery = (gameId: Id<'games'>) =>
   convexQuery(api.games.get, { gameId })
 
+export const getGameByJoinCodeQuery = (joinCode: string) =>
+  convexQuery(api.games.getByJoinCode, { joinCode })
+
 // ===========================================
 // Timeline queries
 // ===========================================

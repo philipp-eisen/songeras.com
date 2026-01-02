@@ -1,13 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import type { Id } from '../../convex/_generated/dataModel'
 import {
   FinishedView,
   GameControlsBar,
   GameHeader,
   LobbyView,
 } from '@/components/play'
-import { getGameQuery } from '@/lib/convex-queries'
+import { getGameByJoinCodeQuery } from '@/lib/convex-queries'
 import {
   Card,
   CardDescription,
@@ -15,18 +14,18 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 
-export const Route = createFileRoute('/play/$gameId')({
+export const Route = createFileRoute('/play/$joinCode')({
   loader: async ({ context, params }) => {
     await context.queryClient.ensureQueryData(
-      getGameQuery(params.gameId as Id<'games'>),
+      getGameByJoinCodeQuery(params.joinCode),
     )
   },
   component: GamePage,
 })
 
 function GamePage() {
-  const { gameId } = Route.useParams()
-  const { data: game } = useSuspenseQuery(getGameQuery(gameId as Id<'games'>))
+  const { joinCode } = Route.useParams()
+  const { data: game } = useSuspenseQuery(getGameByJoinCodeQuery(joinCode))
 
   if (!game) {
     return (
