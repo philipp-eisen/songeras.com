@@ -1,5 +1,5 @@
 import { v } from 'convex/values'
-import { query } from './_generated/server'
+import { mutation, query } from './_generated/server'
 
 /**
  * List all playlists owned by the current user
@@ -151,5 +151,74 @@ export const get = query({
         unmatchedReason: t.unmatchedReason,
       })),
     }
+  },
+})
+
+/**
+ * Remove a track from a playlist
+ * Updates track counts and reorders remaining tracks
+ */
+export const removeTrack = mutation({
+  args: {
+    trackId: v.id('playlistTracks'),
+  },
+  returns: v.object({
+    success: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) {
+      throw new Error('Not authenticated')
+    }
+
+    // Get the track to remove
+    const track = await ctx.db.get('playlistTracks', args.trackId)
+    if (!track) {
+      throw new Error('Track not found')
+    }
+
+    // Get the playlist to verify ownership
+    const playlist = await ctx.db.get('playlists', track.playlistId)
+    if (!playlist || playlist.ownerUserId !== identity.subject) {
+      throw new Error('Not authorized')
+    }
+
+    // Update playlist counts based on track status
+    const updatedCounts = {
+      totalTracks: playlist.totalTracks - 1,
+      readyTracks:
+        track.status === 'ready'
+          ? playlist.readyTracks - 1
+          : playlist.readyTracks,
+      unmatchedTracks:
+        track.status === 'unmatched'
+          ? playlist.unmatchedTracks - 1
+          : playlist.unmatchedTracks,
+    }
+
+    await ctx.db.patch('playlists', playlist._id, updatedCounts)
+
+    // Delete the track
+    await ctx.db.delete('playlistTracks', args.trackId)
+
+    // Re-order remaining tracks to maintain consecutive positions
+    const remainingTracks = await ctx.db
+      .query('playlistTracks')
+      .withIndex('by_playlistId_and_position', (q) =>
+        q.eq('playlistId', playlist._id),
+      )
+      .collect()
+
+    // Sort by position and update positions to be consecutive
+    remainingTracks.sort((a, b) => a.position - b.position)
+    for (let i = 0; i < remainingTracks.length; i++) {
+      if (remainingTracks[i].position !== i) {
+        await ctx.db.patch('playlistTracks', remainingTracks[i]._id, {
+          position: i,
+        })
+      }
+    }
+
+    return { success: true }
   },
 })

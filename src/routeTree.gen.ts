@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PlaylistsRouteImport } from './routes/playlists'
+import { Route as PlaylistsPlaylistIdRouteImport } from './routes/playlists.$playlistId'
 import { Route as GamesRouteImport } from './routes/games'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PlayJoinCodeRouteImport } from './routes/play.$joinCode'
@@ -18,6 +19,11 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 const PlaylistsRoute = PlaylistsRouteImport.update({
   id: '/playlists',
   path: '/playlists',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlaylistsPlaylistIdRoute = PlaylistsPlaylistIdRouteImport.update({
+  id: '/playlists/$playlistId',
+  path: '/playlists/$playlistId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamesRoute = GamesRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/games': typeof GamesRoute
   '/playlists': typeof PlaylistsRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/play/$joinCode': typeof PlayJoinCodeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/games': typeof GamesRoute
   '/playlists': typeof PlaylistsRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/play/$joinCode': typeof PlayJoinCodeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -60,19 +68,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/games': typeof GamesRoute
   '/playlists': typeof PlaylistsRoute
+  '/playlists/$playlistId': typeof PlaylistsPlaylistIdRoute
   '/play/$joinCode': typeof PlayJoinCodeRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/games' | '/playlists' | '/play/$joinCode' | '/api/auth/$'
+  fullPaths: '/' | '/games' | '/playlists' | '/playlists/$playlistId' | '/play/$joinCode' | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/games' | '/playlists' | '/play/$joinCode' | '/api/auth/$'
+  to: '/' | '/games' | '/playlists' | '/playlists/$playlistId' | '/play/$joinCode' | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/games'
     | '/playlists'
+    | '/playlists/$playlistId'
     | '/play/$joinCode'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -81,6 +91,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   GamesRoute: typeof GamesRoute
   PlaylistsRoute: typeof PlaylistsRoute
+  PlaylistsPlaylistIdRoute: typeof PlaylistsPlaylistIdRoute
   PlayJoinCodeRoute: typeof PlayJoinCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -92,6 +103,13 @@ declare module '@tanstack/react-router' {
       path: '/playlists'
       fullPath: '/playlists'
       preLoaderRoute: typeof PlaylistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playlists/$playlistId': {
+      id: '/playlists/$playlistId'
+      path: '/playlists/$playlistId'
+      fullPath: '/playlists/$playlistId'
+      preLoaderRoute: typeof PlaylistsPlaylistIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/games': {
@@ -129,6 +147,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   GamesRoute: GamesRoute,
   PlaylistsRoute: PlaylistsRoute,
+  PlaylistsPlaylistIdRoute: PlaylistsPlaylistIdRoute,
   PlayJoinCodeRoute: PlayJoinCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
