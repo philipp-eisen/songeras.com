@@ -36,7 +36,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
-export const Route = createFileRoute('/playlists/$playlistId')({
+export const Route = createFileRoute('/playlists_/$playlistId')({
   beforeLoad: ({ context }) => {
     if (!context.isAuthenticated) {
       throw redirect({ to: '/' })
