@@ -11,6 +11,9 @@ export const listMyPlaylistsQuery = () => convexQuery(api.playlists.listMine, {}
 export const getPlaylistQuery = (playlistId: Id<'playlists'>) =>
   convexQuery(api.playlists.get, { playlistId })
 
+export const getPlaylistWithAllTracksQuery = (playlistId: Id<'playlists'>) =>
+  convexQuery(api.playlists.get, { playlistId, includeAllTracks: true })
+
 // ===========================================
 // Game queries
 // ===========================================
