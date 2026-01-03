@@ -5,13 +5,9 @@ import { anonymous } from 'better-auth/plugins'
 import { components } from './_generated/api'
 import { query } from './_generated/server'
 import authConfig from './auth.config'
+import { env } from './env'
 import type { GenericCtx } from '@convex-dev/better-auth'
 import type { DataModel } from './_generated/dataModel'
-
-const siteUrl = process.env.SITE_URL
-if (!siteUrl) {
-  throw new Error('Missing required environment variable: SITE_URL')
-}
 
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
@@ -19,7 +15,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth)
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
-    baseURL: siteUrl,
+    baseURL: env.SITE_URL,
     database: authComponent.adapter(ctx),
     account: {
       accountLinking: {
@@ -33,8 +29,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     },
     socialProviders: {
       google: {
-        clientId: process.env.GOOGLE_CLIENT_ID as string,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
       },
     },
     plugins: [
