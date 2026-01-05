@@ -1,6 +1,8 @@
+import { CheckIcon, CopyIcon, LinkIcon, UsersIcon } from '@phosphor-icons/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
 import type { GameData } from './types'
@@ -32,6 +34,19 @@ export function LobbyView({ game }: LobbyViewProps) {
   const [newPlayerName, setNewPlayerName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyLink = async () => {
+    const gameUrl = `${window.location.origin}/play/${game.joinCode}`
+    try {
+      await navigator.clipboard.writeText(gameUrl)
+      setCopied(true)
+      toast.success('Link copied to clipboard')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('Failed to copy link')
+    }
+  }
 
   const handleStart = async () => {
     setError(null)
@@ -89,12 +104,56 @@ export function LobbyView({ game }: LobbyViewProps) {
 
   return (
     <div className="space-y-4">
+      {/* Invite Players Card - only for sidecars mode */}
+      {game.mode === 'sidecars' && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <UsersIcon weight="duotone" className="size-5 text-primary" />
+              <CardTitle className="text-lg">Invite Players</CardTitle>
+            </div>
+            <CardDescription>
+              Share this link with friends to invite them to the game
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
+              <LinkIcon weight="duotone" className="size-5 text-muted-foreground" />
+              <div className="flex-1 truncate font-mono text-sm">
+                {typeof window !== 'undefined'
+                  ? `${window.location.origin}/play/${game.joinCode}`
+                  : `/play/${game.joinCode}`}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button onClick={handleCopyLink} className="flex-1 gap-2">
+                {copied ? (
+                  <>
+                    <CheckIcon weight="duotone" className="size-4" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <CopyIcon weight="duotone" className="size-4" />
+                    Copy Invite Link
+                  </>
+                )}
+              </Button>
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">Join Code</p>
+                <p className="font-mono text-lg font-bold">{game.joinCode}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Lobby</CardTitle>
           <CardDescription>
             {game.mode === 'sidecars'
-              ? 'Share the join code with other players'
+              ? 'Waiting for players to join'
               : 'Add players to the game'}
           </CardDescription>
         </CardHeader>
