@@ -1,5 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation } from 'convex/react'
+import { useEffect, useState } from 'react'
+import { api } from '../../convex/_generated/api'
 import {
   FinishedView,
   GameControlsBar,
@@ -7,12 +10,16 @@ import {
   LobbyView,
 } from '@/components/play'
 import { getGameByJoinCodeQuery } from '@/lib/convex-queries'
+import { authClient } from '@/lib/auth-client'
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 
 export const Route = createFileRoute('/play/$joinCode')({
   loader: async ({ context, params }) => {
@@ -26,7 +33,89 @@ export const Route = createFileRoute('/play/$joinCode')({
 function GamePage() {
   const { joinCode } = Route.useParams()
   const { data: game } = useSuspenseQuery(getGameByJoinCodeQuery(joinCode))
+  const { data: session, isPending: isSessionPending } =
+    authClient.useSession()
+  const joinByCode = useMutation(api.games.joinByCode)
 
+  const [isJoining, setIsJoining] = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
+  const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false)
+
+  // Auto-join when user opens link and game query returns null (not yet in game)
+  useEffect(() => {
+    // Don't attempt join if:
+    // - Already in the game
+    // - Already attempting/attempted join
+    // - Session is still loading
+    if (game || isJoining || hasAttemptedJoin || isSessionPending) {
+      return
+    }
+
+    const attemptJoin = async () => {
+      setIsJoining(true)
+      setJoinError(null)
+      try {
+        // If not logged in, sign in as anonymous first
+        if (!session) {
+          await authClient.signIn.anonymous()
+        }
+        await joinByCode({ joinCode: joinCode.toUpperCase() })
+        // Success! The query will automatically update and show the game
+      } catch (err) {
+        setJoinError(
+          err instanceof Error ? err.message : 'Failed to join game',
+        )
+      } finally {
+        setIsJoining(false)
+        setHasAttemptedJoin(true)
+      }
+    }
+
+    attemptJoin()
+  }, [
+    game,
+    isJoining,
+    hasAttemptedJoin,
+    isSessionPending,
+    session,
+    joinByCode,
+    joinCode,
+  ])
+
+  // Show loading state while joining
+  if (isJoining) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-8">
+            <Spinner className="size-8" />
+            <p className="text-muted-foreground">Joining game...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Show error if join failed
+  if (!game && joinError) {
+    return (
+      <div className="p-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Unable to Join Game</CardTitle>
+            <CardDescription>{joinError}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" render={<Link to="/" />}>
+              Go Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Show not found if no game and no join error (game doesn't exist or not accessible)
   if (!game) {
     return (
       <div className="p-4">
@@ -37,6 +126,11 @@ function GamePage() {
               This game doesn't exist or you don't have access.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button variant="outline" render={<Link to="/" />}>
+              Go Home
+            </Button>
+          </CardContent>
         </Card>
       </div>
     )

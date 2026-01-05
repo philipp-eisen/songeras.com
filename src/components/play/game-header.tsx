@@ -8,14 +8,9 @@ interface GameHeaderProps {
 export function GameHeader({ game }: GameHeaderProps) {
   return (
     <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl font-bold">
-          {game.playlistName ?? 'Song Game'}
-        </h1>
-        <p className="text-muted-foreground">
-          Code: <span className="font-mono text-lg">{game.joinCode}</span>
-        </p>
-      </div>
+      <h1 className="text-2xl font-bold">
+        {game.playlistName ?? 'Song Game'}
+      </h1>
       <Badge
         variant={
           game.phase === 'lobby'
