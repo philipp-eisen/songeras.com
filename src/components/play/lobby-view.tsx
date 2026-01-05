@@ -1,7 +1,7 @@
 import { CheckIcon, CopyIcon, LinkIcon, UsersIcon } from '@phosphor-icons/react'
 import { useNavigate } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../../../convex/_generated/api'
 import type { Id } from '../../../convex/_generated/dataModel'
@@ -36,13 +36,27 @@ export function LobbyView({ game }: LobbyViewProps) {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleCopyLink = async () => {
     const gameUrl = `${window.location.origin}/play/${game.joinCode}`
     try {
       await navigator.clipboard.writeText(gameUrl)
       setCopied(true)
       toast.success('Link copied to clipboard')
-      setTimeout(() => setCopied(false), 2000)
+
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
     } catch {
       toast.error('Failed to copy link')
     }
