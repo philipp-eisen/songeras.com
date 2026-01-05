@@ -224,6 +224,7 @@ async function drawNextCard(
 
 /**
  * Advance to the next player's turn
+ * In tiebreaker mode, skips players not in the tiebreaker list
  */
 async function advanceTurn(ctx: MutationCtx, game: Game): Promise<number> {
   const players = await ctx.db
@@ -231,7 +232,23 @@ async function advanceTurn(ctx: MutationCtx, game: Game): Promise<number> {
     .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
     .collect()
 
-  const nextSeatIndex = (game.currentTurnSeatIndex + 1) % players.length
+  const playerCount = players.length
+  let nextSeatIndex = (game.currentTurnSeatIndex + 1) % playerCount
+
+  // If in tiebreaker mode, skip non-tiebreaker players
+  if (game.tiebreakPlayerIds && game.tiebreakPlayerIds.length > 0) {
+    const tiebreakPlayerIdSet = new Set(game.tiebreakPlayerIds)
+    let attempts = 0
+    while (attempts < playerCount) {
+      const playerAtSeat = players.find((p) => p.seatIndex === nextSeatIndex)
+      if (playerAtSeat && tiebreakPlayerIdSet.has(playerAtSeat._id)) {
+        break
+      }
+      nextSeatIndex = (nextSeatIndex + 1) % playerCount
+      attempts++
+    }
+  }
+
   return nextSeatIndex
 }
 
@@ -778,29 +795,107 @@ export const resolveRound = mutation({
       }
     }
 
-    // Check win condition
-    let winnerId: Id<'gamePlayers'> | undefined
-
-    // Get all players and check timeline sizes
+    // Get all players and their timeline sizes
     const allPlayers = await ctx.db
       .query('gamePlayers')
       .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
       .collect()
+
+    const playerTimelines: Array<{
+      player: typeof allPlayers[0]
+      timelineLength: number
+    }> = []
 
     for (const player of allPlayers) {
       const playerTimeline = await ctx.db
         .query('timelineEntries')
         .withIndex('by_playerId', (q) => q.eq('playerId', player._id))
         .collect()
+      playerTimelines.push({ player, timelineLength: playerTimeline.length })
+    }
 
-      if (playerTimeline.length >= game.winCondition) {
-        winnerId = player._id
-        break
-      }
+    // Check if any player has reached win condition
+    const playersAtWinCondition = playerTimelines.filter(
+      (pt) => pt.timelineLength >= game.winCondition,
+    )
+
+    // Track if we're starting a new win check round
+    let winCheckStartSeatIndex = game.winCheckStartSeatIndex
+    const tiebreakPlayerIds = game.tiebreakPlayerIds
+
+    // If someone reached win condition and we haven't started a win check round yet
+    if (playersAtWinCondition.length > 0 && winCheckStartSeatIndex === undefined) {
+      // Start the win check round - other players get to finish their turns
+      winCheckStartSeatIndex = game.currentTurnSeatIndex
     }
 
     // Advance turn
     const nextSeatIndex = await advanceTurn(ctx, game)
+
+    // Determine if we've completed a full round of the win check
+    // A round is complete when we return to the seat that started the win check
+    const isWinCheckRoundComplete =
+      winCheckStartSeatIndex !== undefined && nextSeatIndex === winCheckStartSeatIndex
+
+    let winnerId: Id<'gamePlayers'> | undefined
+
+    if (isWinCheckRoundComplete) {
+      // The round is complete - evaluate the winner
+      // In tiebreaker mode, only consider tiebreaker players
+      const eligiblePlayers =
+        tiebreakPlayerIds && tiebreakPlayerIds.length > 0
+          ? playerTimelines.filter((pt) =>
+              tiebreakPlayerIds.includes(pt.player._id),
+            )
+          : playerTimelines
+
+      // Find the max timeline length among eligible players
+      const maxLength = Math.max(...eligiblePlayers.map((pt) => pt.timelineLength))
+      const playersWithMax = eligiblePlayers.filter(
+        (pt) => pt.timelineLength === maxLength,
+      )
+
+      if (playersWithMax.length === 1) {
+        // Single winner!
+        winnerId = playersWithMax[0].player._id
+      } else if (playersWithMax.length > 1 && maxLength >= game.winCondition) {
+        // Tie among players at or above win condition - continue with tiebreaker
+        // Only the tied players continue playing
+        const newTiebreakPlayerIds = playersWithMax.map((pt) => pt.player._id)
+
+        // Find the first tiebreaker player's seat to be the new starting point
+        const tiebreakPlayers = allPlayers.filter((p) =>
+          newTiebreakPlayerIds.includes(p._id),
+        )
+        tiebreakPlayers.sort((a, b) => a.seatIndex - b.seatIndex)
+
+        // Find the next tiebreaker player starting from current position
+        let nextTiebreakSeatIndex = tiebreakPlayers[0].seatIndex
+        for (const tp of tiebreakPlayers) {
+          if (tp.seatIndex >= nextSeatIndex) {
+            nextTiebreakSeatIndex = tp.seatIndex
+            break
+          }
+        }
+
+        // Continue to tiebreaker round
+        await ctx.db.patch('games', args.gameId, {
+          phase: 'awaitingStart',
+          currentTurnSeatIndex: nextTiebreakSeatIndex,
+          currentRound: undefined,
+          winCheckStartSeatIndex: nextTiebreakSeatIndex,
+          tiebreakPlayerIds: newTiebreakPlayerIds,
+        })
+
+        return {
+          placementCorrect,
+          cardWentTo,
+          winningBettorId,
+          winnerId: undefined,
+        }
+      }
+      // If no one is at win condition yet, continue normally (clear win check state)
+    }
 
     if (winnerId) {
       // Game over
@@ -809,6 +904,8 @@ export const resolveRound = mutation({
         currentRound: undefined,
         winnerId,
         finishedAt: Date.now(),
+        winCheckStartSeatIndex: undefined,
+        tiebreakPlayerIds: undefined,
       })
     } else {
       // Continue to next turn
@@ -816,6 +913,9 @@ export const resolveRound = mutation({
         phase: 'awaitingStart',
         currentTurnSeatIndex: nextSeatIndex,
         currentRound: undefined,
+        winCheckStartSeatIndex: winCheckStartSeatIndex,
+        // Keep tiebreakPlayerIds if already in tiebreaker mode
+        tiebreakPlayerIds: tiebreakPlayerIds,
       })
     }
 
@@ -893,18 +993,20 @@ export const tradeTokensForCard = mutation({
       insertIndex,
     )
 
-    // Check win condition
+    // Check if player reached win condition
     const newTimeline = await ctx.db
       .query('timelineEntries')
       .withIndex('by_playerId', (q) => q.eq('playerId', activePlayer._id))
       .collect()
 
     if (newTimeline.length >= game.winCondition) {
-      await ctx.db.patch('games', args.gameId, {
-        phase: 'finished',
-        winnerId: activePlayer._id,
-        finishedAt: Date.now(),
-      })
+      // Start win check round if not already started
+      // Other players who haven't played in this round will get their turn
+      if (game.winCheckStartSeatIndex === undefined) {
+        await ctx.db.patch('games', args.gameId, {
+          winCheckStartSeatIndex: game.currentTurnSeatIndex,
+        })
+      }
     }
 
     return {
