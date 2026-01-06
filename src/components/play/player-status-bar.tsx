@@ -5,6 +5,7 @@ import type { GameData, TimelineData } from './types'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 interface PlayerStatusBarProps {
@@ -32,7 +33,7 @@ export function PlayerStatusBar({ game, timelines }: PlayerStatusBarProps) {
 
   return (
     <ScrollArea className="w-full">
-      <div className="flex gap-2 pb-2 md:gap-3">
+      <div className="flex gap-2 pb-3 md:gap-3">
         {sortedPlayers.map((player) => {
           const isActive = player.seatIndex === currentTurnSeatIndex
           const timeline = timelines?.find((t) => t.playerId === player._id)
@@ -93,15 +94,21 @@ const PlayerStatusItem = forwardRef<HTMLDivElement, PlayerStatusItemProps>(
             )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-0.5">
-              <StackIcon weight="duotone" className="size-3" />
-              {cardCount}
-            </span>
+            <Tooltip>
+              <TooltipTrigger className="flex cursor-default items-center gap-0.5">
+                <StackIcon weight="duotone" className="size-3" />
+                {cardCount}
+              </TooltipTrigger>
+              <TooltipContent>Cards in timeline</TooltipContent>
+            </Tooltip>
             {showTokens && (
-              <span className="flex items-center gap-0.5">
-                <CoinIcon weight="duotone" className="size-3" />
-                {player.tokenBalance}
-              </span>
+              <Tooltip>
+                <TooltipTrigger className="flex cursor-default items-center gap-0.5">
+                  <CoinIcon weight="duotone" className="size-3" />
+                  {player.tokenBalance}
+                </TooltipTrigger>
+                <TooltipContent>Tokens</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
