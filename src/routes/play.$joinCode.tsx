@@ -8,8 +8,9 @@ import {
   GameControlsBar,
   GameHeader,
   LobbyView,
+  PlayerStatusBar,
 } from '@/components/play'
-import { getGameByJoinCodeQuery } from '@/lib/convex-queries'
+import { getAllTimelinesQuery, getGameByJoinCodeQuery } from '@/lib/convex-queries'
 import { authClient } from '@/lib/auth-client'
 import {
   Card,
@@ -138,13 +139,10 @@ function GamePage() {
 
   const isActiveGame = game.phase !== 'lobby' && game.phase !== 'finished'
 
-  // Active game layout: header + controls (active timeline shown in controls)
+  // Active game layout: header + player status bar + controls
   if (isActiveGame) {
     return (
-      <div className="space-y-4 p-4">
-        <GameHeader game={game} />
-        <GameControlsBar game={game} />
-      </div>
+      <ActiveGameView game={game} />
     )
   }
 
@@ -154,6 +152,20 @@ function GamePage() {
       <GameHeader game={game} />
       {game.phase === 'lobby' && <LobbyView game={game} />}
       {game.phase === 'finished' && <FinishedView game={game} />}
+    </div>
+  )
+}
+
+// Separate component for active game to use suspense query for timelines
+function ActiveGameView({ game }: { game: NonNullable<typeof api.games.get._returnType> }) {
+  const { data: timelines } = useSuspenseQuery(getAllTimelinesQuery(game._id))
+  const timelineData = timelines ?? []
+
+  return (
+    <div className="space-y-4 p-4">
+      <GameHeader game={game} />
+      <PlayerStatusBar game={game} timelines={timelineData} />
+      <GameControlsBar game={game} timelines={timelineData} />
     </div>
   )
 }
