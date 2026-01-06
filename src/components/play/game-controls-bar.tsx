@@ -1,12 +1,11 @@
 import { useMutation } from 'convex/react'
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api } from '../../../convex/_generated/api'
 import { TurnControls } from './turn-controls'
 import { TimelineView } from './timeline-view'
-import type { GameData } from './types'
+import type { GameData, TimelineData } from './types'
 import {
-  getAllTimelinesQuery,
   getCurrentRoundCardQuery,
   getCurrentRoundSongPreviewQuery,
 } from '@/lib/convex-queries'
@@ -15,13 +14,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface GameControlsBarProps {
   game: GameData
+  timelines: Array<TimelineData>
 }
 
-export function GameControlsBar({ game }: GameControlsBarProps) {
+export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
   const { data: songPreview } = useQuery(
     getCurrentRoundSongPreviewQuery(game._id),
   )
-  const { data: timelines } = useSuspenseQuery(getAllTimelinesQuery(game._id))
   const { data: currentCard } = useQuery(getCurrentRoundCardQuery(game._id))
 
   const isHost = game.isCurrentUserHost
@@ -40,7 +39,7 @@ export function GameControlsBar({ game }: GameControlsBarProps) {
     !!activePlayer
 
   // Find the active player's timeline from the already-loaded timelines
-  const activePlayerTimeline = timelines?.find(
+  const activePlayerTimeline = timelines.find(
     (t) => t.playerId === activePlayer?._id,
   )
 
