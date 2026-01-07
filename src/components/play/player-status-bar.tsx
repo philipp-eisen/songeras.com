@@ -33,7 +33,7 @@ export function PlayerStatusBar({ game, timelines }: PlayerStatusBarProps) {
 
   return (
     <ScrollArea className="w-full">
-      <div className="flex gap-2 p-1 md:gap-3">
+      <div className="flex gap-2 p-2 md:gap-3">
         {sortedPlayers.map((player) => {
           const isActive = player.seatIndex === currentTurnSeatIndex
           const timeline = timelines?.find((t) => t.playerId === player._id)

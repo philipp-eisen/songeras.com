@@ -5,7 +5,6 @@ import {
   CoinIcon,
   EyeIcon,
   FastForwardIcon,
-  SparkleIcon,
 } from '@phosphor-icons/react'
 
 import { api } from '../../../convex/_generated/api'
@@ -29,7 +28,6 @@ export function TurnControls({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const startRound = useMutation(api.turns.startRound)
   const skipRound = useMutation(api.turns.skipRound)
   const revealCard = useMutation(api.turns.revealCard)
   const resolveRound = useMutation(api.turns.resolveRound)
@@ -48,31 +46,35 @@ export function TurnControls({
     }
   }
 
-  // awaitingStart phase
-  if (game.phase === 'awaitingStart' && isActivePlayer) {
+  // awaitingPlacement phase - active player sees the drag-drop UI in GameControlsBar
+  if (game.phase === 'awaitingPlacement' && isActivePlayer) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex flex-wrap gap-2">
-          <Button
-            size="lg"
-            className="gap-2"
-            onClick={() =>
-              handleAction(() =>
-                startRound({
-                  gameId: game._id,
-                  actingPlayerId: activePlayer._id,
-                }),
-              )
-            }
-            disabled={loading}
-          >
-            <SparkleIcon weight="duotone" className="size-5" />
-            Draw a Mystery Card
-          </Button>
+          {game.useTokens && activePlayer.tokenBalance >= 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() =>
+                handleAction(() =>
+                  skipRound({
+                    gameId: game._id,
+                    actingPlayerId: activePlayer._id,
+                  }),
+                )
+              }
+              disabled={loading}
+            >
+              <FastForwardIcon weight="duotone" className="size-4" />
+              Skip Song (1 token)
+            </Button>
+          )}
           {game.useTokens && activePlayer.tokenBalance >= 3 && (
             <Button
               variant="outline"
-              className="gap-2"
+              size="sm"
+              className="gap-1.5"
               onClick={() =>
                 handleAction(() =>
                   tradeTokensForCard({
@@ -88,34 +90,6 @@ export function TurnControls({
             </Button>
           )}
         </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
-    )
-  }
-
-  // awaitingPlacement phase - active player sees the drag-drop UI in GameControlsBar
-  if (game.phase === 'awaitingPlacement' && isActivePlayer) {
-    return (
-      <div className="space-y-2">
-        {game.useTokens && activePlayer.tokenBalance >= 1 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() =>
-              handleAction(() =>
-                skipRound({
-                  gameId: game._id,
-                  actingPlayerId: activePlayer._id,
-                }),
-              )
-            }
-            disabled={loading}
-          >
-            <FastForwardIcon weight="duotone" className="size-4" />
-            Skip Turn (1 token)
-          </Button>
-        )}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     )
@@ -141,22 +115,45 @@ export function TurnControls({
     if (isActivePlayer || isHost) {
       return (
         <div className="space-y-3">
-          <Button
-            size="lg"
-            className="gap-2"
-            onClick={() =>
-              handleAction(() =>
-                revealCard({
-                  gameId: game._id,
-                  actingPlayerId: activePlayer._id,
-                }),
-              )
-            }
-            disabled={loading}
-          >
-            <EyeIcon weight="duotone" className="size-5" />
-            Reveal the Answer!
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="lg"
+              className="gap-2"
+              onClick={() =>
+                handleAction(() =>
+                  revealCard({
+                    gameId: game._id,
+                    actingPlayerId: activePlayer._id,
+                  }),
+                )
+              }
+              disabled={loading}
+            >
+              <EyeIcon weight="duotone" className="size-5" />
+              Reveal the Answer!
+            </Button>
+            {isActivePlayer &&
+              game.useTokens &&
+              activePlayer.tokenBalance >= 3 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() =>
+                    handleAction(() =>
+                      tradeTokensForCard({
+                        gameId: game._id,
+                        actingPlayerId: activePlayer._id,
+                      }),
+                    )
+                  }
+                  disabled={loading}
+                >
+                  <CoinIcon weight="duotone" className="size-4" />
+                  Auto-place (3 tokens)
+                </Button>
+              )}
+          </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )
@@ -204,6 +201,27 @@ export function TurnControls({
               Continue
             </Button>
           )}
+          {isActivePlayer &&
+            game.useTokens &&
+            activePlayer.tokenBalance >= 3 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() =>
+                  handleAction(() =>
+                    tradeTokensForCard({
+                      gameId: game._id,
+                      actingPlayerId: activePlayer._id,
+                    }),
+                  )
+                }
+                disabled={loading}
+              >
+                <CoinIcon weight="duotone" className="size-4" />
+                Auto-place (3 tokens)
+              </Button>
+            )}
           {game.useTokens &&
             myPlayer &&
             !alreadyClaimed &&

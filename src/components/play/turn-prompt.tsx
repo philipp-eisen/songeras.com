@@ -3,7 +3,6 @@ import {
   CursorClickIcon,
   EyeIcon,
   HourglassIcon,
-  SparkleIcon,
 } from '@phosphor-icons/react'
 
 import type { GameData, PlayerData } from './types'
@@ -51,13 +50,8 @@ function getPromptContent(
   phase: GameData['phase'],
   isActivePlayer: boolean,
   playerName: string,
-): { message: string; icon: typeof SparkleIcon } {
+): { message: string; icon: typeof HourglassIcon } {
   switch (phase) {
-    case 'awaitingStart':
-      return isActivePlayer
-        ? { message: 'Your turn! Draw a mystery card', icon: SparkleIcon }
-        : { message: `Waiting for ${playerName} to draw...`, icon: HourglassIcon }
-
     case 'awaitingPlacement':
       return isActivePlayer
         ? { message: 'Place your card in the timeline!', icon: CursorClickIcon }
@@ -72,6 +66,6 @@ function getPromptContent(
       return { message: "Let's see the result!", icon: CardsIcon }
 
     default:
-      return { message: 'Get ready...', icon: SparkleIcon }
+      return { message: 'Get ready...', icon: HourglassIcon }
   }
 }

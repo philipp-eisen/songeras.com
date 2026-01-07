@@ -356,7 +356,7 @@ export function TimelineViewEditable({
 
           <div
             className={cn(
-              '-m-1 flex gap-2 overflow-x-auto p-1',
+              'flex gap-2 overflow-x-auto p-2',
               // Subtle highlight while dragging the (external) mystery card toward the timeline.
               isDragging &&
                 showExternalMysteryCard &&
@@ -395,8 +395,8 @@ export function TimelineViewEditable({
   )
 
   return (
-    <Card className={isActivePlayer ? 'border-2 border-primary' : ''}>
-      <CardContent className="py-3">{content}</CardContent>
+    <Card className={cn('overflow-visible', isActivePlayer && 'border-2 border-primary')}>
+      <CardContent className="overflow-visible py-1">{content}</CardContent>
     </Card>
   )
 }
