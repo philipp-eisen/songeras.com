@@ -208,7 +208,7 @@ function RevealedCardFace({
             'ring-2 ring-destructive ring-offset-1 ring-offset-background',
         )}
       >
-        <CardContent className="flex flex-col items-center gap-0 p-0">
+        <CardContent className="flex flex-col items-center gap-0 overflow-hidden p-0">
           {cardData?.imageUrl && (
             <img
               src={cardData.imageUrl}

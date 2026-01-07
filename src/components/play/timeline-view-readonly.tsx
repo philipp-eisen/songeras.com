@@ -98,7 +98,7 @@ export function TimelineViewReadonly({
         {cardStack && (
           <div className="mb-5 flex justify-center">{cardStack}</div>
         )}
-        {/* Timeline row - animates on player change (exit right only) */}
+        {/* Timeline row - animates on player change (exit only) */}
         <div className="overflow-hidden">
           <motion.div
             className="flex gap-2 overflow-x-auto px-2 pb-2 pt-4"
@@ -108,7 +108,7 @@ export function TimelineViewReadonly({
                 ? { x: 300, opacity: 0 }
                 : { x: 0, opacity: 1 }
             }
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
           >
             {displayCards.length === 0 ? (
               <p className="text-sm text-muted-foreground">No cards yet</p>
