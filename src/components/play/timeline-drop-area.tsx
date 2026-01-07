@@ -64,7 +64,7 @@ export function TimelineDropArea({
           )}
           <div
             className={cn(
-              'flex gap-2 overflow-x-auto p-2',
+              'flex gap-2 overflow-x-auto px-2 pb-2 pt-4',
               // Subtle highlight while dragging toward the timeline
               isDragging && showExternalMysteryCard && 'rounded-md ring-1 ring-primary/30',
             )}

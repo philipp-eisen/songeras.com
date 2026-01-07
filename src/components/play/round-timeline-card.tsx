@@ -199,7 +199,7 @@ function RevealedCardFace({
       <Card
         size="sm"
         className={cn(
-          'relative h-full w-full items-center gap-1 p-2 text-center transition-colors duration-300',
+          'relative h-full w-full items-center gap-1 overflow-visible p-2 text-center transition-colors duration-300',
           isRevealed &&
             isCorrect === true &&
             'ring-2 ring-success ring-offset-1 ring-offset-background',

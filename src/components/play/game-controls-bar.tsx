@@ -10,7 +10,6 @@ import {
 } from '@dnd-kit/core'
 import { useMutation } from 'convex/react'
 import { useQuery } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'motion/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MusicNoteIcon } from '@phosphor-icons/react'
 
@@ -18,6 +17,7 @@ import { api } from '../../../convex/_generated/api'
 import { ActionButtons } from './action-zone'
 import { BetControls } from './bet-controls'
 import { MYSTERY_CARD_ID, MysteryCardStack } from './mystery-card-stack'
+import { PlayerStatusBar } from './player-status-bar'
 import { DraggableMysteryCard } from './round-timeline-card'
 import { TimelineDropArea } from './timeline-drop-area'
 import { TimelineViewReadonly } from './timeline-view-readonly'
@@ -383,84 +383,78 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activePlayer?._id ?? 'none'}
-          className="space-y-4"
-          initial={{ x: 300, opacity: 0 }}
-          animate={isExiting ? { x: -300, opacity: 0 } : { x: 0, opacity: 1 }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }}
-        >
-          {/* Timeline with card stack inside */}
-          {activePlayerTimeline && shouldShowDropzone ? (
-            <TimelineDropArea
-              timeline={activePlayerTimeline}
-              items={items}
-              isActivePlayer={true}
-              isDragging={isDragging}
-              isCardPlaced={isCardPlaced}
-              dragDisabled={isPlacing}
-              cardStack={
-                <MysteryCardStack
-                  key={`${canDragCard}-${game.currentRound?.card?.title ?? 'none'}`}
-                  cardsRemaining={cardsRemaining}
-                  disabled={!canDragCard}
-                />
-              }
-            />
-          ) : activePlayerTimeline ? (
-            <TimelineViewReadonly
-              timeline={activePlayerTimeline}
-              game={game}
-              isActivePlayer={true}
-              currentCard={currentCard}
-              cardStack={
-                <MysteryCardStack
-                  key={`${canDragCard}-${game.currentRound?.card?.title ?? 'none'}`}
-                  cardsRemaining={cardsRemaining}
-                  disabled={!canDragCard}
-                />
-              }
-            />
-          ) : null}
+      {/* Player status bar - stays in place, highlight animates between players */}
+      <PlayerStatusBar game={game} timelines={timelines} />
 
-          {/* Action buttons - below timeline */}
-          {activePlayer && (
-            <div className="flex justify-center">
-              <ActionButtons
-                game={game}
-                activePlayer={activePlayer}
-                isActivePlayer={isActivePlayer}
-                isHost={isHost}
-                onBeforeResolve={handleBeforeResolve}
-              />
-            </div>
-          )}
+      {/* Play area card - card and stack stay in place, only timeline animates */}
+      {activePlayerTimeline && shouldShowDropzone ? (
+        <TimelineDropArea
+          timeline={activePlayerTimeline}
+          items={items}
+          isActivePlayer={true}
+          isDragging={isDragging}
+          isCardPlaced={isCardPlaced}
+          dragDisabled={isPlacing}
+          cardStack={
+            <MysteryCardStack
+              key={`${canDragCard}-${game.currentRound?.card?.title ?? 'none'}`}
+              cardsRemaining={cardsRemaining}
+              disabled={!canDragCard}
+            />
+          }
+        />
+      ) : activePlayerTimeline ? (
+        <TimelineViewReadonly
+          timeline={activePlayerTimeline}
+          game={game}
+          isActivePlayer={true}
+          currentCard={currentCard}
+          cardStack={
+            <MysteryCardStack
+              key={`${canDragCard}-${game.currentRound?.card?.title ?? 'none'}`}
+              cardsRemaining={cardsRemaining}
+              disabled={!canDragCard}
+            />
+          }
+          isExiting={isExiting}
+        />
+      ) : null}
 
-          {placementError && (
-            <p className="text-center text-sm text-destructive">
-              {placementError}
+      {/* Action buttons - below timeline */}
+      {activePlayer && (
+        <div className="flex justify-center">
+          <ActionButtons
+            game={game}
+            activePlayer={activePlayer}
+            isActivePlayer={isActivePlayer}
+            isHost={isHost}
+            onBeforeResolve={handleBeforeResolve}
+          />
+        </div>
+      )}
+
+      {placementError && (
+        <p className="text-center text-sm text-destructive">
+          {placementError}
+        </p>
+      )}
+
+      {/* Betting controls for non-active players */}
+      {!isActivePlayer &&
+        game.useTokens &&
+        myPlayer &&
+        myPlayer.tokenBalance >= 1 &&
+        (game.phase === 'awaitingPlacement' ||
+          game.phase === 'awaitingReveal') && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {game.phase === 'awaitingReveal'
+                ? 'Last chance to place your bet!'
+                : 'Bet on where the card should go (costs 1 token)'}
             </p>
-          )}
-
-          {/* Betting controls for non-active players */}
-          {!isActivePlayer &&
-            game.useTokens &&
-            myPlayer &&
-            myPlayer.tokenBalance >= 1 &&
-            (game.phase === 'awaitingPlacement' ||
-              game.phase === 'awaitingReveal') && (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {game.phase === 'awaitingReveal'
-                    ? 'Last chance to place your bet!'
-                    : 'Bet on where the card should go (costs 1 token)'}
-                </p>
-                <BetControls game={game} myPlayer={myPlayer} />
-              </div>
-            )}
-        </motion.div>
-      </AnimatePresence>
+            <BetControls game={game} myPlayer={myPlayer} />
+          </div>
+        )}
 
       {/* Drag overlay */}
       <DragOverlay dropAnimation={null}>

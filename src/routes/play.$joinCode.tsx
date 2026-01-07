@@ -8,7 +8,6 @@ import {
   GameControlsBar,
   GameHeader,
   LobbyView,
-  PlayerStatusBar,
   TurnPrompt,
 } from '@/components/play'
 import {
@@ -179,7 +178,6 @@ function ActiveGameView({
         activePlayer={activePlayer}
         isActivePlayer={!!isActivePlayer}
       />
-      <PlayerStatusBar game={game} timelines={timelineData} />
       <GameControlsBar game={game} timelines={timelineData} />
     </div>
   )
