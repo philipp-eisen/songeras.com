@@ -147,6 +147,13 @@ export default defineSchema({
     currentRound: v.optional(currentRoundValidator),
     winnerId: v.optional(v.id('gamePlayers')), // Set when game is finished
 
+    // Round-based winning state
+    // When a player first reaches win condition, we store the seat that started this "win check round"
+    // The round continues until we return to this seat, then we evaluate the winner
+    winCheckStartSeatIndex: v.optional(v.number()),
+    // If there's a tie after a complete round, only these players continue (tiebreaker mode)
+    tiebreakPlayerIds: v.optional(v.array(v.id('gamePlayers'))),
+
     // Metadata
     createdAt: v.number(),
     startedAt: v.optional(v.number()),
