@@ -197,7 +197,7 @@ export function TurnControls({
               }
               disabled={loading}
             >
-              <ArrowRightIcon weight="bold" className="size-4" />
+              <ArrowRightIcon weight="duotone" className="size-4" />
               Continue
             </Button>
           )}
