@@ -34,27 +34,6 @@ export function ActionZone({
   isCardPlaced,
   dragDisabled,
 }: ActionZoneProps) {
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  const skipRound = useMutation(api.turns.skipRound)
-  const revealCard = useMutation(api.turns.revealCard)
-  const resolveRound = useMutation(api.turns.resolveRound)
-  const tradeTokensForCard = useMutation(api.turns.tradeTokensForCard)
-  const claimGuessToken = useMutation(api.turns.claimGuessToken)
-
-  const handleAction = async (action: () => Promise<unknown>) => {
-    setError(null)
-    setLoading(true)
-    try {
-      await action()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action failed')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   // Card stack is only draggable during placement phases when it's the active player's turn
   const canDragCard =
     isActivePlayer &&
@@ -66,33 +45,21 @@ export function ActionZone({
   const stackKey = `${canDragCard}-${game.currentRound?.card?.title ?? 'none'}`
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl bg-muted/30 p-4">
-      {/* Left side: Mystery card stack - always visible */}
-      <div className="shrink-0">
-        <MysteryCardStack
-          key={stackKey}
-          cardsRemaining={cardsRemaining}
-          disabled={!canDragCard}
-        />
-      </div>
+    <div className="flex items-center justify-center gap-4 rounded-2xl bg-muted/30 p-4">
+      {/* Card stack */}
+      <MysteryCardStack
+        key={stackKey}
+        cardsRemaining={cardsRemaining}
+        disabled={!canDragCard}
+      />
 
-      {/* Right side: Action buttons */}
-      <div className="flex flex-1 flex-col items-end gap-2">
-        <ActionButtons
-          game={game}
-          activePlayer={activePlayer}
-          isActivePlayer={isActivePlayer}
-          isHost={isHost}
-          loading={loading}
-          onAction={handleAction}
-          skipRound={skipRound}
-          revealCard={revealCard}
-          resolveRound={resolveRound}
-          tradeTokensForCard={tradeTokensForCard}
-          claimGuessToken={claimGuessToken}
-        />
-        {error && <p className="text-sm text-destructive">{error}</p>}
-      </div>
+      {/* Action buttons - to the right of card stack */}
+      <ActionButtons
+        game={game}
+        activePlayer={activePlayer}
+        isActivePlayer={isActivePlayer}
+        isHost={isHost}
+      />
     </div>
   )
 }
@@ -102,34 +69,42 @@ interface ActionButtonsProps {
   activePlayer: PlayerData
   isActivePlayer: boolean
   isHost: boolean
-  loading: boolean
-  onAction: (action: () => Promise<unknown>) => Promise<void>
-  skipRound: ReturnType<typeof useMutation<typeof api.turns.skipRound>>
-  revealCard: ReturnType<typeof useMutation<typeof api.turns.revealCard>>
-  resolveRound: ReturnType<typeof useMutation<typeof api.turns.resolveRound>>
-  tradeTokensForCard: ReturnType<typeof useMutation<typeof api.turns.tradeTokensForCard>>
-  claimGuessToken: ReturnType<typeof useMutation<typeof api.turns.claimGuessToken>>
 }
 
-function ActionButtons({
+export function ActionButtons({
   game,
   activePlayer,
   isActivePlayer,
   isHost,
-  loading,
-  onAction,
-  skipRound,
-  revealCard,
-  resolveRound,
-  tradeTokensForCard,
-  claimGuessToken,
 }: ActionButtonsProps) {
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const skipRound = useMutation(api.turns.skipRound)
+  const revealCard = useMutation(api.turns.revealCard)
+  const resolveRound = useMutation(api.turns.resolveRound)
+  const tradeTokensForCard = useMutation(api.turns.tradeTokensForCard)
+  const claimGuessToken = useMutation(api.turns.claimGuessToken)
+
+  const onAction = async (action: () => Promise<unknown>) => {
+    setError(null)
+    setLoading(true)
+    try {
+      await action()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Action failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const myPlayer = game.players.find((p) => p.isCurrentUser)
 
   // awaitingPlacement phase - active player buttons
   if (game.phase === 'awaitingPlacement' && isActivePlayer) {
     return (
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
         {game.useTokens && activePlayer.tokenBalance >= 1 && (
           <Button
             variant="outline"
@@ -168,6 +143,8 @@ function ActionButtons({
             Auto-place
           </Button>
         )}
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     )
   }
@@ -176,7 +153,8 @@ function ActionButtons({
   if (game.phase === 'awaitingReveal') {
     if (isActivePlayer || isHost) {
       return (
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
           <Button
             size="lg"
             className="gap-2"
@@ -214,6 +192,8 @@ function ActionButtons({
                 Auto-place
               </Button>
             )}
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
       )
     }
@@ -227,7 +207,8 @@ function ActionButtons({
     )
 
     return (
-      <div className="flex flex-wrap justify-end gap-2">
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
         {(isActivePlayer || isHost) && (
           <Button
             className="gap-2"
@@ -287,6 +268,8 @@ function ActionButtons({
               Claim Bonus
             </Button>
           )}
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     )
   }

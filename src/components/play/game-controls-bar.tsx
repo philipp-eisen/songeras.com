@@ -14,9 +14,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MusicNoteIcon } from '@phosphor-icons/react'
 
 import { api } from '../../../convex/_generated/api'
-import { ActionZone } from './action-zone'
+import { ActionButtons } from './action-zone'
 import { BetControls } from './bet-controls'
-import { MYSTERY_CARD_ID } from './mystery-card-stack'
+import { MYSTERY_CARD_ID, MysteryCardStack } from './mystery-card-stack'
 import { DraggableMysteryCard } from './round-timeline-card'
 import { TimelineDropArea } from './timeline-drop-area'
 import { TimelineViewReadonly } from './timeline-view-readonly'
@@ -315,6 +315,13 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
   const isDragging = activeId === MYSTERY_CARD_ID
   const isCardPlaced = items.includes(MYSTERY_CARD_ID)
 
+  // Card stack is only draggable during placement phases when it's the active player's turn
+  const canDragCard =
+    isActivePlayer &&
+    (game.phase === 'awaitingPlacement' || game.phase === 'awaitingReveal') &&
+    !isCardPlaced &&
+    !isPlacing
+
   // Cards remaining in the deck
   const cardsRemaining = game.deckRemaining
 
@@ -356,6 +363,15 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
           </div>
         </div>
 
+        {/* Card stack - above timeline */}
+        <div className="flex justify-center">
+          <MysteryCardStack
+            key={`${canDragCard}-${game.currentRound?.card?.title ?? 'none'}`}
+            cardsRemaining={cardsRemaining}
+            disabled={!canDragCard}
+          />
+        </div>
+
         {/* Timeline */}
         {activePlayerTimeline && shouldShowDropzone ? (
           <TimelineDropArea
@@ -375,17 +391,16 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
           />
         ) : null}
 
-        {/* Action Zone - Card stack + controls */}
+        {/* Action buttons - below timeline */}
         {activePlayer && (
-          <ActionZone
-            game={game}
-            activePlayer={activePlayer}
-            isActivePlayer={isActivePlayer}
-            isHost={isHost}
-            cardsRemaining={cardsRemaining}
-            isCardPlaced={isCardPlaced}
-            dragDisabled={isPlacing}
-          />
+          <div className="flex justify-center">
+            <ActionButtons
+              game={game}
+              activePlayer={activePlayer}
+              isActivePlayer={isActivePlayer}
+              isHost={isHost}
+            />
+          </div>
         )}
 
         {placementError && (
