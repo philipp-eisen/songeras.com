@@ -80,7 +80,7 @@ export function TimelineDropArea({
                 // Mobile: vertical layout, cards centered
                 'flex flex-col items-center gap-3 py-2',
                 // Desktop: horizontal layout with bottom padding for year labels
-                'md:flex-row md:items-start md:gap-2 md:overflow-x-auto md:pb-16 md:pt-4 md:px-2',
+                'md:flex-row md:items-start md:justify-center md:gap-2 md:overflow-x-auto md:pb-16 md:pt-4 md:px-2',
                 // Subtle highlight while dragging toward the timeline
                 isDragging && showExternalMysteryCard && 'rounded-md ring-1 ring-primary/30',
               )}
