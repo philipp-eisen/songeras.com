@@ -2,12 +2,15 @@ import { motion } from 'motion/react'
 import { useMemo } from 'react'
 import { GameCard } from './game-card'
 import { RoundTimelineCard } from './round-timeline-card'
+import { TimelineCardWrapper } from './timeline-card-wrapper'
+import { TimelineRail } from './timeline-rail'
 import { isPlacementCorrect } from './placement-utils'
 
 import type { ReactNode } from 'react'
 import type { CardData, GameData, TimelineData } from './types'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 export interface TimelineViewReadonlyProps {
   timeline: TimelineData
@@ -96,48 +99,62 @@ export function TimelineViewReadonly({
       <CardContent className="py-3">
         {/* Card stack inside the card - stays in place */}
         {cardStack && (
-          <div className="mb-5 flex justify-center">{cardStack}</div>
+          <div className="mb-8 flex justify-center">{cardStack}</div>
         )}
         {/* Timeline row - animates on player change (exit only) */}
-        <div className="overflow-hidden">
+        <div className="overflow-hidden md:overflow-x-auto">
           <motion.div
-            className="flex gap-2 overflow-x-auto px-2 pb-2 pt-4"
+            className={cn(
+              'relative',
+              // Mobile: vertical layout, cards centered
+              'flex flex-col items-center gap-3 py-2',
+              // Desktop: horizontal layout with bottom padding for year labels
+              'md:flex-row md:items-start md:justify-center md:gap-2 md:min-w-full md:w-max md:pb-16 md:pt-4 md:px-2',
+            )}
             initial={false}
-            animate={
-              isExiting
-                ? { x: 300, opacity: 0 }
-                : { x: 0, opacity: 1 }
-            }
+            animate={isExiting ? { x: 300, opacity: 0 } : { x: 0, opacity: 1 }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
           >
+            {/* Timeline rail */}
+            <TimelineRail />
+
             {displayCards.length === 0 ? (
               <p className="text-sm text-muted-foreground">No cards yet</p>
             ) : (
               displayCards.map((item, index) =>
                 item.type === 'timeline' ? (
-                  <GameCard
+                  <TimelineCardWrapper
                     key={item.card._id}
-                    title={item.card.title}
                     releaseYear={item.card.releaseYear}
-                    artistName={item.card.artistNames[0]}
-                    imageUrl={item.card.imageUrl}
-                  />
+                  >
+                    <GameCard
+                      title={item.card.title}
+                      artistName={item.card.artistNames[0]}
+                      imageUrl={item.card.imageUrl}
+                    />
+                  </TimelineCardWrapper>
                 ) : (
-                  <RoundTimelineCard
+                  <TimelineCardWrapper
                     key={`round-placeholder-${index}`}
+                    releaseYear={currentCard?.releaseYear ?? 0}
                     isRevealed={phase === 'revealed'}
                     isCorrect={isCorrect}
-                    cardData={
-                      currentCard
-                        ? {
-                            title: currentCard.title,
-                            releaseYear: currentCard.releaseYear,
-                            artistName: currentCard.artistNames[0],
-                            imageUrl: currentCard.imageUrl,
-                          }
-                        : undefined
-                    }
-                  />
+                  >
+                    <RoundTimelineCard
+                      isRevealed={phase === 'revealed'}
+                      isCorrect={isCorrect}
+                      cardData={
+                        currentCard
+                          ? {
+                              title: currentCard.title,
+                              releaseYear: currentCard.releaseYear,
+                              artistName: currentCard.artistNames[0],
+                              imageUrl: currentCard.imageUrl,
+                            }
+                          : undefined
+                      }
+                    />
+                  </TimelineCardWrapper>
                 ),
               )
             )}

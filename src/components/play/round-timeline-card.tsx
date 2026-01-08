@@ -1,8 +1,4 @@
-import {
-  CheckCircleIcon,
-  SealQuestionIcon,
-  XCircleIcon,
-} from '@phosphor-icons/react'
+import { SealQuestionIcon } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
@@ -234,46 +230,7 @@ function RevealedCardFace({
               {cardData.artistName}
             </p>
           )}
-          <p className="mt-auto text-sm font-bold text-primary">
-            {cardData?.releaseYear ?? '????'}
-          </p>
         </CardContent>
-
-        {/* Result badge overlay - correct */}
-        {isRevealed && isCorrect === true && (
-          <motion.div
-            className="absolute -right-3 -top-3 rounded-full bg-success p-1 shadow-lg"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: 1,
-            }}
-            transition={{
-              delay: 0.3,
-              duration: 0.5,
-              scale: { delay: 0.5, duration: 0.4, repeat: 2 },
-            }}
-          >
-            <CheckCircleIcon className="h-6 w-6 text-white" weight="duotone" />
-          </motion.div>
-        )}
-
-        {/* Result badge overlay - wrong */}
-        {isRevealed && isCorrect === false && (
-          <motion.div
-            className="absolute -right-3 -top-3 rounded-full bg-destructive p-1 shadow-lg"
-            initial={{ scale: 0, opacity: 0, rotate: -180 }}
-            animate={{ scale: 1, opacity: 1, rotate: 0 }}
-            transition={{
-              delay: 0.8,
-              duration: 0.4,
-              type: 'spring',
-              stiffness: 200,
-            }}
-          >
-            <XCircleIcon className="h-6 w-6 text-white" weight="duotone" />
-          </motion.div>
-        )}
       </Card>
     </div>
   )

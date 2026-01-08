@@ -3,6 +3,7 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
   useSortable,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ArrowDownIcon } from '@phosphor-icons/react'
@@ -12,9 +13,12 @@ import { useMemo } from 'react'
 import { GameCard } from './game-card'
 import { MYSTERY_CARD_ID } from './mystery-card-stack'
 import { DraggableMysteryCard } from './round-timeline-card'
+import { TimelineCardWrapper } from './timeline-card-wrapper'
+import { TimelineRail } from './timeline-rail'
 import type { ReactNode } from 'react'
 import type { TimelineData } from './types'
 import { Card, CardContent } from '@/components/ui/card'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { cn } from '@/lib/utils'
 
 const TIMELINE_EMPTY_SLOT_ID = 'timeline-empty-slot'
@@ -43,6 +47,8 @@ export function TimelineDropArea({
   dragDisabled,
   cardStack,
 }: TimelineDropAreaProps) {
+  const isMobile = useIsMobile()
+
   // Create a map of card data for quick lookup
   const cardDataMap = useMemo(() => {
     const map = new Map<string, TimelineData['cards'][0]>()
@@ -53,26 +59,43 @@ export function TimelineDropArea({
   }, [timeline.cards])
 
   const showExternalMysteryCard = !isCardPlaced
+  const sortingStrategy = isMobile
+    ? verticalListSortingStrategy
+    : horizontalListSortingStrategy
 
   return (
-    <SortableContext items={items} strategy={horizontalListSortingStrategy}>
-      <Card className={cn('overflow-visible', isActivePlayer && 'border-2 border-primary')}>
+    <SortableContext items={items} strategy={sortingStrategy}>
+      <Card
+        className={cn(
+          'overflow-visible',
+          isActivePlayer && 'border-2 border-primary',
+        )}
+      >
         <CardContent className="overflow-visible py-3">
           {/* Card stack inside the card */}
           {cardStack && (
-            <div className="mb-5 flex justify-center">{cardStack}</div>
+            <div className="mb-8 flex justify-center">{cardStack}</div>
           )}
-          <div className="overflow-hidden">
+          <div className="overflow-hidden md:overflow-x-auto">
             <motion.div
               className={cn(
-                'flex gap-2 overflow-x-auto px-2 pb-2 pt-4',
+                'relative',
+                // Mobile: vertical layout, cards centered
+                'flex flex-col items-center gap-3 py-2',
+                // Desktop: horizontal layout with bottom padding for year labels
+                'md:flex-row md:items-start md:justify-center md:gap-2 md:min-w-full md:w-max md:pb-16 md:pt-4 md:px-2',
                 // Subtle highlight while dragging toward the timeline
-                isDragging && showExternalMysteryCard && 'rounded-md ring-1 ring-primary/30',
+                isDragging &&
+                  showExternalMysteryCard &&
+                  'rounded-md ring-1 ring-primary/30',
               )}
               initial={{ x: -100, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ duration: 0.4, ease: 'easeOut' }}
             >
+              {/* Timeline rail */}
+              <TimelineRail />
+
               {items.length === 0 ? (
                 <TimelineEmptyDropSlot disabled={dragDisabled} />
               ) : (
@@ -111,7 +134,11 @@ function TimelineEmptyDropSlot({ disabled }: { disabled?: boolean }) {
     <div
       ref={setNodeRef}
       className={cn(
-        'flex h-40 w-28 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center transition-all',
+        'flex shrink-0 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-center transition-all',
+        // Mobile: wider drop zone, shorter height
+        'h-32 w-full',
+        // Desktop: standard card size
+        'md:h-40 md:w-28',
         isOver
           ? 'scale-105 border-primary bg-primary/10'
           : 'border-muted-foreground/30 bg-muted/30',
@@ -187,13 +214,14 @@ function SortableTimelineCard({ id, card }: SortableTimelineCardProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} className="shrink-0">
-      <GameCard
-        title={card.title}
-        releaseYear={card.releaseYear}
-        artistName={card.artistNames[0]}
-        imageUrl={card.imageUrl}
-      />
+    <div ref={setNodeRef} style={style}>
+      <TimelineCardWrapper releaseYear={card.releaseYear}>
+        <GameCard
+          title={card.title}
+          artistName={card.artistNames[0]}
+          imageUrl={card.imageUrl}
+        />
+      </TimelineCardWrapper>
     </div>
   )
 }

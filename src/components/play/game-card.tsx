@@ -3,7 +3,6 @@ import { cn } from '@/lib/utils'
 
 interface GameCardProps {
   title: string
-  releaseYear: number
   artistName?: string
   imageUrl?: string | null
   className?: string
@@ -11,7 +10,6 @@ interface GameCardProps {
 
 export function GameCard({
   title,
-  releaseYear,
   artistName,
   imageUrl,
   className,
@@ -46,7 +44,6 @@ export function GameCard({
             {artistName}
           </p>
         )}
-        <p className="mt-auto text-sm font-bold text-primary">{releaseYear}</p>
       </CardContent>
     </Card>
   )
