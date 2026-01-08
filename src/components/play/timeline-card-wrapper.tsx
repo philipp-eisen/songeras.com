@@ -93,7 +93,7 @@ export function TimelineCardWrapper({
                     scale: { delay: 0.7, duration: 0.4, repeat: 2 },
                   }}
                 >
-                  <CheckCircleIcon className="size-5 text-white" weight="fill" />
+                  <CheckCircleIcon className="size-5 text-white" weight="duotone" />
                 </motion.div>
               ) : (
                 <motion.div
@@ -106,7 +106,7 @@ export function TimelineCardWrapper({
                     stiffness: 200,
                   }}
                 >
-                  <XCircleIcon className="size-5 text-white" weight="fill" />
+                  <XCircleIcon className="size-5 text-white" weight="duotone" />
                 </motion.div>
               )}
             </motion.div>
