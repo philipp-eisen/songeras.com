@@ -4,7 +4,9 @@
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(npx tsc:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm dev:*)",
+      "WebSearch"
     ]
   }
 }
