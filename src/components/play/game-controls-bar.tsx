@@ -121,7 +121,17 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
     itemsRef.current = items
   }, [items])
 
-  // Sync DnD items when timeline cards change (handle external updates)
+  // DnD Sync Effects - Two coordinated effects handle timeline synchronization:
+  //
+  // Effect 1 (below): Syncs DnD items when timeline cards change from server.
+  //   - Filters out mystery card before comparing to detect actual card changes
+  //   - Preserves mystery card position during repositioning (placementIndex set)
+  //
+  // Effect 2 (further below): Ensures mystery card exists during repositioning.
+  //   - Only runs when placementIndex is defined but mystery card is missing
+  //   - Handles the case where repositioning starts after cards are already synced
+
+  // Effect 1: Sync DnD items when timeline cards change (handle external server updates)
   useEffect(() => {
     const cardIds = activePlayerTimeline?.cards.map((c) => c._id as string) ?? []
     const currentCardIds = items.filter((id) => id !== MYSTERY_CARD_ID)
@@ -148,7 +158,8 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
     }
   }, [activePlayerTimeline?.cards, items, game.currentRound?.placementIndex, setDndItems])
 
-  // Ensure mystery card is in list during repositioning
+  // Effect 2: Ensure mystery card is in list during repositioning
+  // This handles the case when placementIndex becomes defined after Effect 1 has run
   useEffect(() => {
     const placementIdx = game.currentRound?.placementIndex
     if (placementIdx === undefined) return
