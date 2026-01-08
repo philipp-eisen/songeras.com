@@ -63,7 +63,6 @@ export function FinishedView({ game }: FinishedViewProps) {
                       <GameCard
                         key={card._id}
                         title={card.title}
-                        releaseYear={card.releaseYear}
                         artistName={card.artistNames[0]}
                         imageUrl={card.imageUrl}
                       />

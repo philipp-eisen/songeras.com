@@ -109,7 +109,7 @@ export function TimelineViewReadonly({
               // Mobile: vertical layout, cards centered
               'flex flex-col items-center gap-3 py-2',
               // Desktop: horizontal layout with bottom padding for year labels
-              'md:flex-row md:items-start md:gap-2 md:overflow-x-auto md:pb-8 md:pt-4 md:px-2',
+              'md:flex-row md:items-start md:gap-2 md:overflow-x-auto md:pb-16 md:pt-4 md:px-2',
             )}
             initial={false}
             animate={
@@ -131,7 +131,6 @@ export function TimelineViewReadonly({
                   >
                     <GameCard
                       title={item.card.title}
-                      releaseYear={item.card.releaseYear}
                       artistName={item.card.artistNames[0]}
                       imageUrl={item.card.imageUrl}
                     />
@@ -140,6 +139,8 @@ export function TimelineViewReadonly({
                   <TimelineCardWrapper
                     key={`round-placeholder-${index}`}
                     releaseYear={currentCard?.releaseYear ?? 0}
+                    isRevealed={phase === 'revealed'}
+                    isCorrect={isCorrect}
                   >
                     <RoundTimelineCard
                       isRevealed={phase === 'revealed'}
