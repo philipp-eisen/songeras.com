@@ -7,8 +7,8 @@ import {
   FinishedView,
   GameControlsBar,
   GameHeader,
+  GameStickyFooter,
   LobbyView,
-  TurnPrompt,
 } from '@/components/play'
 import {
   getAllTimelinesQuery,
@@ -168,10 +168,12 @@ function ActiveGameView({
   useSyncGameToStore(game, timelineData)
 
   return (
-    <div className="space-y-4 p-4">
-      <GameHeader game={game} />
-      <TurnPrompt game={game} />
-      <GameControlsBar game={game} timelines={timelineData} />
-    </div>
+    <>
+      <div className="space-y-4 p-4 pb-16">
+        <GameHeader game={game} />
+        <GameControlsBar game={game} timelines={timelineData} />
+      </div>
+      <GameStickyFooter game={game} />
+    </>
   )
 }

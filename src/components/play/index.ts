@@ -1,3 +1,4 @@
+export { GameStickyFooter } from './game-sticky-footer'
 export { LobbyView } from './lobby-view'
 export { FinishedView } from './finished-view'
 export { GameHeader } from './game-header'
