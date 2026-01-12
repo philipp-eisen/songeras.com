@@ -19,16 +19,17 @@ import {
   useWrapAction,
 } from '@/stores/play-game-store'
 
-/** Wrapper that adds a pulsing glow animation to indicate an active CTA */
+/** Wrapper that adds a pulsing scale animation to indicate an active CTA */
 function PulsingCtaWrapper({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
       className="rounded-lg"
       animate={{
+        scale: [1, 1.05, 1],
         boxShadow: [
-          '0 0 0 0 hsl(var(--primary) / 0.5)',
-          '0 0 0 8px hsl(var(--primary) / 0)',
-          '0 0 0 0 hsl(var(--primary) / 0.5)',
+          '0 0 0 0 hsl(var(--primary) / 0.4)',
+          '0 0 0 6px hsl(var(--primary) / 0)',
+          '0 0 0 0 hsl(var(--primary) / 0.4)',
         ],
       }}
       transition={{
