@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 
 import { ConfettiBurst } from './confetti-burst'
+import { CardText } from './card-text'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -208,27 +209,23 @@ function RevealedCardFace({
             'ring-2 ring-destructive ring-offset-1 ring-offset-background',
         )}
       >
-        <CardContent className="flex flex-col items-center gap-0 overflow-hidden p-0">
+        <CardContent className="flex h-full flex-col items-center gap-1 overflow-hidden p-0">
           {cardData?.imageUrl && (
             <img
               src={cardData.imageUrl}
               alt=""
-              className="mb-1 h-12 w-12 shrink-0 rounded object-cover"
+              className="h-20 w-20 shrink-0 rounded-md object-cover"
             />
           )}
-          <p
-            className="line-clamp-4 h-14 w-full text-xs font-medium leading-[0.875rem]"
-            title={cardData?.title}
-          >
-            {cardData?.title ?? 'Unknown'}
-          </p>
+          <CardText
+            text={cardData?.title ?? 'Unknown'}
+            className="line-clamp-2 w-full text-xs font-medium leading-snug"
+          />
           {cardData?.artistName && (
-            <p
+            <CardText
+              text={cardData.artistName}
               className="w-full shrink-0 truncate text-xs text-muted-foreground"
-              title={cardData.artistName}
-            >
-              {cardData.artistName}
-            </p>
+            />
           )}
         </CardContent>
       </Card>
