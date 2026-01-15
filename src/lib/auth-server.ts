@@ -1,7 +1,7 @@
 import { convexBetterAuthReactStart } from '@convex-dev/better-auth/react-start'
 
-const convexUrl = process.env.VITE_CONVEX_URL
-const convexSiteUrl = process.env.VITE_CONVEX_SITE_URL
+const convexUrl = import.meta.env.VITE_CONVEX_URL
+const convexSiteUrl = import.meta.env.VITE_CONVEX_SITE_URL
 
 if (!convexUrl || !convexSiteUrl) {
   throw new Error(

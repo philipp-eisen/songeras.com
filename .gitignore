@@ -6,9 +6,9 @@ dist-ssr
 .claude/*.local*
 count.txt
 .env
-.nitro
 .tanstack
 .wrangler
+.dev.vars
 .output
 .vinxi
 todos.json

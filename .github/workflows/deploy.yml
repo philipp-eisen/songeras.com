@@ -1,0 +1,92 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  deploy-production:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      # Deploy Convex production (uses Production Deploy Key)
+      # The deploy command sets VITE_CONVEX_URL automatically
+      - name: Deploy Convex & Build
+        run: npx convex deploy --cmd 'pnpm run build'
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  deploy-preview:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      # Deploy Convex preview (uses Preview Deploy Key)
+      # When using Preview key, convex deploy automatically:
+      # 1. Creates/updates a preview deployment named after the git branch
+      # 2. Sets VITE_CONVEX_URL to the preview backend URL
+      # 3. Runs the build command with correct env vars
+      - name: Deploy Convex Preview & Build
+        run: npx convex deploy --cmd 'pnpm run build' --preview-create "${{ github.head_ref }}"
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY_PREVIEW }}
+
+      # Deploy preview to Cloudflare with branch-specific name
+      - name: Deploy Preview to Cloudflare
+        id: cloudflare-deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --name songeras-pr-${{ github.event.pull_request.number }}
+
+      - name: Comment PR with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Preview Deployment Ready
+
+            **Frontend:** https://songeras-pr-${{ github.event.pull_request.number }}.workers.dev
+
+            The Convex preview backend is automatically created for branch \`${{ github.head_ref }}\`.
+            View it in the [Convex Dashboard](https://dashboard.convex.dev).
+
+            Preview will be automatically updated on new commits.`
+            })
