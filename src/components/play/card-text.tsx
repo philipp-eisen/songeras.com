@@ -1,5 +1,9 @@
 import type { ComponentProps } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 
 type CardTextProps = {
@@ -26,10 +30,8 @@ export function CardText({
   return (
     <Tooltip>
       <TooltipTrigger
-        className={cn(
-          'block w-full cursor-default appearance-none bg-transparent p-0 text-inherit outline-hidden',
-          className,
-        )}
+        render={<span />}
+        className={cn('block w-full cursor-default text-center', className)}
       >
         {text}
       </TooltipTrigger>

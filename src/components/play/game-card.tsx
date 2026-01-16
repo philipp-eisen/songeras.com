@@ -31,16 +31,19 @@ export function GameCard({
             className="h-20 w-20 shrink-0 rounded-md object-cover"
           />
         )}
-        <CardText
-          text={title}
-          className="line-clamp-2 w-full text-xs font-medium leading-snug"
-        />
-        {artistName && (
+        {/* Text container: fills remaining space, keeps artist anchored at bottom */}
+        <div className="flex min-h-0 w-full flex-1 flex-col justify-between">
           <CardText
-            text={artistName}
-            className="w-full shrink-0 truncate text-xs text-muted-foreground"
+            text={title}
+            className="line-clamp-2 w-full text-xs font-medium leading-tight"
           />
-        )}
+          {artistName && (
+            <CardText
+              text={artistName}
+              className="mt-0.5 w-full truncate text-xs text-muted-foreground"
+            />
+          )}
+        </div>
       </CardContent>
     </Card>
   )

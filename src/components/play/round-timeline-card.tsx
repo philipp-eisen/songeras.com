@@ -217,16 +217,19 @@ function RevealedCardFace({
               className="h-20 w-20 shrink-0 rounded-md object-cover"
             />
           )}
-          <CardText
-            text={cardData?.title ?? 'Unknown'}
-            className="line-clamp-2 w-full text-xs font-medium leading-snug"
-          />
-          {cardData?.artistName && (
+          {/* Text container: fills remaining space, keeps artist anchored at bottom */}
+          <div className="flex min-h-0 w-full flex-1 flex-col justify-between">
             <CardText
-              text={cardData.artistName}
-              className="w-full shrink-0 truncate text-xs text-muted-foreground"
+              text={cardData?.title ?? 'Unknown'}
+              className="line-clamp-2 w-full text-xs font-medium leading-tight"
             />
-          )}
+            {cardData?.artistName && (
+              <CardText
+                text={cardData.artistName}
+                className="mt-0.5 w-full truncate text-xs text-muted-foreground"
+              />
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
