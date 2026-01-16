@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "songeras",
-  "compatibility_date": "2025-01-14",
+  "compatibility_date": "2026-01-16",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
 }
