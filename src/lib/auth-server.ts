@@ -1,13 +1,13 @@
 import { convexBetterAuthReactStart } from '@convex-dev/better-auth/react-start'
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL
-const convexSiteUrl = import.meta.env.VITE_CONVEX_SITE_URL
 
-if (!convexUrl || !convexSiteUrl) {
-  throw new Error(
-    'Missing required environment variables: VITE_CONVEX_URL and VITE_CONVEX_SITE_URL',
-  )
+if (!convexUrl) {
+  throw new Error('Missing required environment variable: VITE_CONVEX_URL')
 }
+
+// Derive site URL from cloud URL (e.g., https://xxx.convex.cloud -> https://xxx.convex.site)
+const convexSiteUrl = convexUrl.replace('.convex.cloud', '.convex.site')
 
 export const {
   handler,
