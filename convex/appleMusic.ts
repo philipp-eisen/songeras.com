@@ -2,7 +2,7 @@
 
 import { ActionCache } from '@convex-dev/action-cache'
 import { v } from 'convex/values'
-import { action, internalAction } from './_generated/server'
+import { internalAction } from './_generated/server'
 import { components, internal } from './_generated/api'
 import { env } from './env'
 import type { ActionCtx } from './_generated/server'
@@ -292,63 +292,5 @@ export const getPlaylist = internalAction({
       console.error('[Apple Music] Get playlist error:', error)
       return null
     }
-  },
-})
-
-// ===========================================
-// Public Actions
-// ===========================================
-
-// Type for search results
-interface SearchResult {
-  appleMusicId: string
-  title: string
-  artistName: string
-  albumName: string
-  releaseYear: number
-  previewUrl?: string
-  artworkUrl?: string
-}
-
-/**
- * Search Apple Music catalog (public action for UI)
- */
-export const search = action({
-  args: {
-    query: v.string(),
-    storefront: v.optional(v.string()),
-  },
-  returns: v.array(
-    v.object({
-      appleMusicId: v.string(),
-      title: v.string(),
-      artistName: v.string(),
-      albumName: v.string(),
-      releaseYear: v.number(),
-      previewUrl: v.optional(v.string()),
-      artworkUrl: v.optional(v.string()),
-    }),
-  ),
-  handler: async (ctx, args): Promise<Array<SearchResult>> => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
-
-    const results = await ctx.runAction(internal.appleMusic.searchCatalog, {
-      query: args.query,
-      storefront: args.storefront,
-      limit: 10,
-    })
-
-    return results.map((r: SearchResult) => ({
-      appleMusicId: r.appleMusicId,
-      title: r.title,
-      artistName: r.artistName,
-      albumName: r.albumName,
-      releaseYear: r.releaseYear,
-      previewUrl: r.previewUrl,
-      artworkUrl: r.artworkUrl,
-    }))
   },
 })

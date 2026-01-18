@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import type { GameData, PlayerData, TimelineData } from '@/components/play/types'
+import type {
+  GameData,
+  PlayerData,
+  TimelineData,
+} from '@/components/play/types'
 import { MYSTERY_CARD_ID } from '@/components/play/mystery-card-stack'
 
 // ============================================
@@ -54,13 +58,8 @@ interface PlayGameActions {
   setDndActiveId: (id: string | null) => void
   setWasExternalDrag: (value: boolean) => void
   resetDndState: () => void
-  insertMysteryCard: (index: number) => void
-  removeMysteryCard: () => void
 
   // Action state
-  setActionLoading: (loading: boolean) => void
-  setActionError: (error: string | null) => void
-  clearActionError: () => void
   wrapAction: <T>(action: () => Promise<T>) => Promise<T>
 
   // Animation
@@ -68,7 +67,7 @@ interface PlayGameActions {
   triggerExitAnimation: () => Promise<void>
 }
 
-export type PlayGameStore = PlayGameState & PlayGameActions
+type PlayGameStore = PlayGameState & PlayGameActions
 
 // ============================================
 // Derived State Computation
@@ -93,8 +92,7 @@ const computeDerivedState = (
   )
   const isHost = game.isCurrentUserHost
   const isActivePlayer =
-    activePlayer?.isCurrentUser ||
-    (activePlayer?.kind === 'local' && isHost)
+    activePlayer?.isCurrentUser || (activePlayer?.kind === 'local' && isHost)
   const myPlayer = game.players.find((p) => p.isCurrentUser)
   const activePlayerTimeline = timelines.find(
     (t) => t.playerId === activePlayer?._id,
@@ -208,57 +206,22 @@ export const usePlayGameStore = create<PlayGameStore>()(
       })
     },
 
-    insertMysteryCard: (index) => {
-      const { dnd } = get()
-      if (dnd.items.includes(MYSTERY_CARD_ID)) return
-
-      const newItems = [...dnd.items]
-      newItems.splice(index, 0, MYSTERY_CARD_ID)
-      set({
-        dnd: {
-          ...dnd,
-          items: newItems,
-          wasExternalDrag: true,
-        },
-      })
-    },
-
-    removeMysteryCard: () => {
-      const { dnd } = get()
-      const newItems = dnd.items.filter((id) => id !== MYSTERY_CARD_ID)
-      set({
-        dnd: {
-          ...dnd,
-          items: newItems,
-        },
-      })
-    },
-
     // Action state
-    setActionLoading: (loading) => {
-      set({ action: { ...get().action, loading } })
-    },
-
-    setActionError: (error) => {
-      set({ action: { ...get().action, error } })
-    },
-
-    clearActionError: () => {
-      set({ action: { ...get().action, error: null } })
-    },
-
     wrapAction: async (action) => {
-      const { setActionLoading, setActionError } = get()
-      setActionError(null)
-      setActionLoading(true)
+      set({ action: { loading: true, error: null } })
       try {
         const result = await action()
         return result
       } catch (err) {
-        setActionError(err instanceof Error ? err.message : 'Action failed')
+        set({
+          action: {
+            loading: false,
+            error: err instanceof Error ? err.message : 'Action failed',
+          },
+        })
         throw err
       } finally {
-        setActionLoading(false)
+        set((state) => ({ action: { ...state.action, loading: false } }))
       }
     },
 
@@ -290,8 +253,7 @@ export const useIsActivePlayer = () =>
 export const useMyPlayer = () =>
   usePlayGameStore((state) => state.derived.myPlayer)
 
-export const useIsHost = () =>
-  usePlayGameStore((state) => state.derived.isHost)
+export const useIsHost = () => usePlayGameStore((state) => state.derived.isHost)
 
 export const useActivePlayerTimeline = () =>
   usePlayGameStore((state) => state.derived.activePlayerTimeline)
@@ -327,4 +289,3 @@ export const useIsExiting = () => usePlayGameStore((state) => state.isExiting)
 
 export const useTriggerExitAnimation = () =>
   usePlayGameStore((state) => state.triggerExitAnimation)
-
