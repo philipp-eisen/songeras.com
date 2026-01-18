@@ -107,7 +107,7 @@ export const get = query({
       return null
     }
 
-    const playlist = await ctx.db.get("playlists", args.playlistId)
+    const playlist = await ctx.db.get('playlists', args.playlistId)
     if (!playlist || playlist.ownerUserId !== identity.subject) {
       return null
     }

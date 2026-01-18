@@ -46,4 +46,3 @@ export function isPlacementCorrect(
   const validIndices = computeValidInsertionIndices(timeline, cardYear)
   return validIndices.includes(placementIndex)
 }
-

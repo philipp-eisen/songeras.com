@@ -132,7 +132,10 @@ function GamesPage() {
                             className="h-8 w-8 p-0"
                             disabled={deleting === game._id}
                           >
-                            <DotsThreeVerticalIcon weight="duotone" className="h-4 w-4" />
+                            <DotsThreeVerticalIcon
+                              weight="duotone"
+                              className="h-4 w-4"
+                            />
                           </Button>
                         }
                       />
@@ -144,7 +147,10 @@ function GamesPage() {
                             handleDelete(game._id)
                           }}
                         >
-                          <TrashIcon weight="duotone" className="mr-2 h-4 w-4" />
+                          <TrashIcon
+                            weight="duotone"
+                            className="mr-2 h-4 w-4"
+                          />
                           Delete Game
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -159,4 +165,3 @@ function GamesPage() {
     </section>
   )
 }
-

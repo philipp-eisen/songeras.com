@@ -28,7 +28,9 @@ export function MysteryCardStack({
     )
   }
 
-  return <DraggableCardStack cardsRemaining={cardsRemaining} disabled={disabled} />
+  return (
+    <DraggableCardStack cardsRemaining={cardsRemaining} disabled={disabled} />
+  )
 }
 
 function DraggableCardStack({
@@ -52,9 +54,7 @@ function DraggableCardStack({
       {...attributes}
       className={cn(
         'relative shrink-0 touch-none',
-        disabled
-          ? 'cursor-not-allowed'
-          : 'cursor-grab active:cursor-grabbing',
+        disabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing',
       )}
     >
       {/* Stack container with perspective */}

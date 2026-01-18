@@ -49,4 +49,3 @@ export function PlaylistsList({ playlists }: PlaylistsListProps) {
     </Card>
   )
 }
-

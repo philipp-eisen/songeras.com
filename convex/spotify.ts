@@ -207,9 +207,13 @@ export const importSpotifyPlaylist = action({
     )
 
     // Schedule background Apple Music matching
-    await ctx.scheduler.runAfter(0, internal.playlistImport.processPlaylistBatch, {
-      playlistId,
-    })
+    await ctx.scheduler.runAfter(
+      0,
+      internal.playlistImport.processPlaylistBatch,
+      {
+        playlistId,
+      },
+    )
 
     return {
       playlistId,

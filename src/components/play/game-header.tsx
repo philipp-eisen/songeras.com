@@ -16,4 +16,3 @@ export function GameHeader({ game }: GameHeaderProps) {
     </div>
   )
 }
-

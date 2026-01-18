@@ -1,8 +1,4 @@
-import {
-  CursorClickIcon,
-  EyeIcon,
-  HourglassIcon,
-} from '@phosphor-icons/react'
+import { CursorClickIcon, EyeIcon, HourglassIcon } from '@phosphor-icons/react'
 
 import { ActionButtons } from './action-zone'
 import type { GameData } from './types'

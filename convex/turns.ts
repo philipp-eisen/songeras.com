@@ -818,9 +818,14 @@ export const tradeTokensForCard = mutation({
       throw new Error('No active round')
     }
 
-    const activePlayer = await ctx.db.get('gamePlayers', game.currentRound.activePlayerId)
+    const activePlayer = await ctx.db.get(
+      'gamePlayers',
+      game.currentRound.activePlayerId,
+    )
     if (!activePlayer || activePlayer._id !== args.actingPlayerId) {
-      throw new Error('Not your turn - can only trade tokens when you are the active player')
+      throw new Error(
+        'Not your turn - can only trade tokens when you are the active player',
+      )
     }
 
     await verifyCanActForPlayer(ctx, game, activePlayer)
