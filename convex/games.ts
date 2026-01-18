@@ -10,6 +10,7 @@ import type { MutationCtx, QueryCtx } from './_generated/server'
 export const gameModeValidator = v.union(
   v.literal('hostOnly'),
   v.literal('sidecars'),
+  v.literal('solo'),
 )
 
 export const gamePhaseValidator = v.union(
@@ -90,6 +91,8 @@ export const create = mutation({
     startingTokens: v.optional(v.number()),
     maxTokens: v.optional(v.number()),
     winCondition: v.optional(v.number()),
+    // Solo mode options
+    startingLives: v.optional(v.number()),
   },
   returns: v.object({
     gameId: v.id('games'),
@@ -126,16 +129,23 @@ export const create = mutation({
       throw new Error('Could not generate unique join code')
     }
 
+    const isSolo = args.mode === 'solo'
+    const startingLives = args.startingLives ?? 3
+
     // Create the game
     const gameId = await ctx.db.insert('games', {
       hostUserId: userId,
       joinCode,
       mode: args.mode,
       playlistId: args.playlistId,
-      useTokens: args.useTokens ?? true,
-      startingTokens: args.startingTokens ?? 2,
-      maxTokens: args.maxTokens ?? 5,
-      winCondition: args.winCondition ?? 10,
+      // Solo mode: disable tokens, no win condition (play until lives = 0)
+      useTokens: isSolo ? false : (args.useTokens ?? true),
+      startingTokens: isSolo ? 0 : (args.startingTokens ?? 2),
+      maxTokens: isSolo ? 0 : (args.maxTokens ?? 5),
+      winCondition: isSolo ? 999 : (args.winCondition ?? 10),
+      // Solo mode fields
+      lives: isSolo ? startingLives : undefined,
+      startingLives: isSolo ? startingLives : undefined,
       phase: 'lobby',
       currentTurnSeatIndex: 0,
       createdAt: Date.now(),
@@ -159,6 +169,20 @@ export const create = mutation({
           isHostSeat: i === 0,
         })
       }
+    } else if (args.mode === 'solo') {
+      // For solo mode, create a user seat and auto-start the game
+      const playerId = await ctx.db.insert('gamePlayers', {
+        gameId,
+        seatIndex: 0,
+        displayName: userName,
+        kind: 'user',
+        userId,
+        tokenBalance: 0,
+        isHostSeat: true,
+      })
+
+      // Auto-start the solo game
+      await startSoloGame(ctx, gameId, args.playlistId, playerId)
     } else {
       // For sidecars mode, create a user seat for the host
       await ctx.db.insert('gamePlayers', {
@@ -175,6 +199,97 @@ export const create = mutation({
     return { gameId, joinCode }
   },
 })
+
+/**
+ * Helper function to auto-start a solo game
+ * Materializes cards, deals starting card, sets up first round
+ */
+async function startSoloGame(
+  ctx: MutationCtx,
+  gameId: Id<'games'>,
+  playlistId: Id<'playlists'>,
+  playerId: Id<'gamePlayers'>,
+): Promise<void> {
+  // Get ready tracks from playlist
+  const readyTracks = await ctx.db
+    .query('playlistTracks')
+    .withIndex('by_playlistId_and_status', (q) =>
+      q.eq('playlistId', playlistId).eq('status', 'ready'),
+    )
+    .collect()
+
+  // Build track data with release years
+  const trackData = readyTracks
+    .filter((t) => t.releaseYear !== undefined)
+    .map((t) => ({
+      trackId: t._id,
+      releaseYear: t.releaseYear!,
+    }))
+
+  if (trackData.length < 11) {
+    throw new Error(
+      `Playlist needs at least 11 ready tracks for solo mode (has ${trackData.length})`,
+    )
+  }
+
+  // Shuffle the tracks
+  const shuffledTracks = shuffleArray(trackData)
+
+  // Create gameCards in shuffled order
+  const gameCardIds: Array<Id<'gameCards'>> = []
+  for (let i = 0; i < shuffledTracks.length; i++) {
+    const cardId = await ctx.db.insert('gameCards', {
+      gameId,
+      trackId: shuffledTracks[i].trackId,
+      releaseYear: shuffledTracks[i].releaseYear,
+      state: 'deck',
+      deckOrder: i,
+    })
+    gameCardIds.push(cardId)
+  }
+
+  // Deal 1 starting card to the player's timeline
+  const starterCardId = gameCardIds[0]
+  await ctx.db.patch('gameCards', starterCardId, {
+    state: 'timeline',
+    ownerPlayerId: playerId,
+    deckOrder: undefined,
+  })
+
+  await ctx.db.insert('timelineEntries', {
+    gameId,
+    playerId,
+    cardId: starterCardId,
+    position: 0,
+  })
+
+  // Set up first round card
+  const firstRoundCardId = gameCardIds[1]
+  await ctx.db.patch('gameCards', firstRoundCardId, {
+    state: 'inRound',
+    deckOrder: undefined,
+  })
+
+  // Update remaining deck cards' deckOrder
+  for (let i = 2; i < gameCardIds.length; i++) {
+    await ctx.db.patch('gameCards', gameCardIds[i], {
+      deckOrder: i - 2,
+    })
+  }
+
+  // Update game state to start playing
+  await ctx.db.patch('games', gameId, {
+    phase: 'awaitingPlacement',
+    startedAt: Date.now(),
+    currentRound: {
+      cardId: firstRoundCardId,
+      activePlayerId: playerId,
+      placementIndex: undefined,
+      bets: [],
+      tokenClaimers: [],
+    },
+  })
+}
 
 /**
  * Add a local player seat to a host-only game (in lobby phase)
@@ -614,6 +729,10 @@ const gameResponseValidator = v.object({
   phase: gamePhaseValidator,
   currentTurnSeatIndex: v.number(),
   winnerId: v.optional(v.id('gamePlayers')),
+  // Solo mode fields
+  lives: v.optional(v.number()),
+  startingLives: v.optional(v.number()),
+  finalScore: v.optional(v.number()),
   createdAt: v.number(),
   startedAt: v.optional(v.number()),
   finishedAt: v.optional(v.number()),
@@ -756,6 +875,10 @@ async function buildGameResponse(
     phase: game.phase,
     currentTurnSeatIndex: game.currentTurnSeatIndex,
     winnerId: game.winnerId,
+    // Solo mode fields
+    lives: game.lives,
+    startingLives: game.startingLives,
+    finalScore: game.finalScore,
     createdAt: game.createdAt,
     startedAt: game.startedAt,
     finishedAt: game.finishedAt,
@@ -864,7 +987,7 @@ export const listMine = query({
     const result: Array<{
       _id: Id<'games'>
       joinCode: string
-      mode: 'hostOnly' | 'sidecars'
+      mode: 'hostOnly' | 'sidecars' | 'solo'
       phase: Doc<'games'>['phase']
       playlistName?: string
       playerCount: number

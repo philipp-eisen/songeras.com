@@ -350,6 +350,9 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
   // Cards remaining in the deck
   const cardsRemaining = game.deckRemaining
 
+  // Solo mode flag
+  const isSolo = game.mode === 'solo'
+
   return (
     <DndContext
       sensors={sensors}
@@ -387,7 +390,8 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       </div>
 
       {/* Player status bar - stays in place, highlight animates between players */}
-      <PlayerStatusBar game={game} timelines={timelines} />
+      {/* Hide in solo mode since there's only one player */}
+      {!isSolo && <PlayerStatusBar game={game} timelines={timelines} />}
 
       {/* Play area card - card and stack stay in place, only timeline animates */}
       {activePlayerTimeline && shouldShowDropzone ? (

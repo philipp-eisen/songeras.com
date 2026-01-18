@@ -569,6 +569,7 @@ export const claimGuessToken = mutation({
 
 /**
  * Resolve the round: validate placement, handle bets, advance turn
+ * For solo mode: handles lives system (lose 1 life on wrong placement)
  */
 export const resolveRound = mutation({
   args: {
@@ -584,6 +585,9 @@ export const resolveRound = mutation({
     ),
     winningBettorId: v.optional(v.id('gamePlayers')),
     winnerId: v.optional(v.id('gamePlayers')),
+    // Solo mode fields
+    livesRemaining: v.optional(v.number()),
+    gameOver: v.boolean(),
   }),
   handler: async (ctx, args) => {
     const game = await ctx.db.get('games', args.gameId)
@@ -636,8 +640,11 @@ export const resolveRound = mutation({
     const placementIndex = game.currentRound.placementIndex
     const placementCorrect = validIndices.includes(placementIndex)
 
+    const isSolo = game.mode === 'solo'
     let cardWentTo: 'activePlayer' | 'bettor' | 'discard' = 'discard'
     let winningBettorId: Id<'gamePlayers'> | undefined
+    let livesRemaining = game.lives
+    let gameOver = false
 
     if (placementCorrect) {
       // Correct placement - card goes to active player's timeline
@@ -650,136 +657,214 @@ export const resolveRound = mutation({
       )
       cardWentTo = 'activePlayer'
     } else {
-      // Incorrect placement - check for winning bettor
-      // Sort bets by timestamp (earliest wins)
-      const sortedBets = [...game.currentRound.bets].sort(
-        (a, b) => a.timestamp - b.timestamp,
-      )
+      // Incorrect placement
+      if (isSolo) {
+        // Solo mode: lose a life, card is discarded
+        livesRemaining = (game.lives ?? 3) - 1
+        await ctx.db.patch('gameCards', card._id, { state: 'discarded' })
+        cardWentTo = 'discard'
 
-      // Find the first bettor who bet on a correct slot
-      for (const bet of sortedBets) {
-        if (validIndices.includes(bet.slotIndex)) {
-          // This bettor wins the card
-          winningBettorId = bet.bettorPlayerId
-          const winningBettor = await ctx.db.get(
-            'gamePlayers',
-            bet.bettorPlayerId,
-          )
+        if (livesRemaining <= 0) {
+          gameOver = true
+        }
+      } else {
+        // Multiplayer: check for winning bettor
+        // Sort bets by timestamp (earliest wins)
+        const sortedBets = [...game.currentRound.bets].sort(
+          (a, b) => a.timestamp - b.timestamp,
+        )
 
-          if (winningBettor) {
-            // Refund the winner's token
-            await ctx.db.patch('gamePlayers', winningBettor._id, {
-              tokenBalance: winningBettor.tokenBalance + 1,
-            })
-
-            // Insert card into the bettor's timeline at the correct position
-            const bettorTimeline = await getPlayerTimeline(
-              ctx,
-              winningBettor._id,
-            )
-            const correctIndex = findCorrectInsertionIndex(
-              bettorTimeline.map((t) => ({ releaseYear: t.card.releaseYear })),
-              card.releaseYear,
+        // Find the first bettor who bet on a correct slot
+        for (const bet of sortedBets) {
+          if (validIndices.includes(bet.slotIndex)) {
+            // This bettor wins the card
+            winningBettorId = bet.bettorPlayerId
+            const winningBettor = await ctx.db.get(
+              'gamePlayers',
+              bet.bettorPlayerId,
             )
 
-            await insertCardIntoTimeline(
-              ctx,
-              game._id,
-              winningBettor._id,
-              card._id,
-              correctIndex,
-            )
-            cardWentTo = 'bettor'
+            if (winningBettor) {
+              // Refund the winner's token
+              await ctx.db.patch('gamePlayers', winningBettor._id, {
+                tokenBalance: winningBettor.tokenBalance + 1,
+              })
+
+              // Insert card into the bettor's timeline at the correct position
+              const bettorTimeline = await getPlayerTimeline(
+                ctx,
+                winningBettor._id,
+              )
+              const correctIndex = findCorrectInsertionIndex(
+                bettorTimeline.map((t) => ({
+                  releaseYear: t.card.releaseYear,
+                })),
+                card.releaseYear,
+              )
+
+              await insertCardIntoTimeline(
+                ctx,
+                game._id,
+                winningBettor._id,
+                card._id,
+                correctIndex,
+              )
+              cardWentTo = 'bettor'
+            }
+            break
           }
+        }
+
+        // If no winning bettor, card is discarded
+        if (cardWentTo === 'discard') {
+          await ctx.db.patch('gameCards', card._id, { state: 'discarded' })
+        }
+      }
+    }
+
+    // Solo mode: handle game over from lives
+    if (isSolo && gameOver) {
+      // Get final timeline size for score
+      const finalTimeline = await ctx.db
+        .query('timelineEntries')
+        .withIndex('by_playerId', (q) => q.eq('playerId', activePlayer._id))
+        .collect()
+
+      await ctx.db.patch('games', args.gameId, {
+        phase: 'finished',
+        currentRound: undefined,
+        lives: 0,
+        finalScore: finalTimeline.length,
+        finishedAt: Date.now(),
+      })
+
+      return {
+        placementCorrect,
+        cardWentTo,
+        winningBettorId: undefined,
+        winnerId: undefined,
+        livesRemaining: 0,
+        gameOver: true,
+      }
+    }
+
+    // Solo mode: update lives after decrement
+    if (isSolo && livesRemaining !== game.lives) {
+      await ctx.db.patch('games', args.gameId, { lives: livesRemaining })
+    }
+
+    // Check win condition (multiplayer only - solo uses lives system)
+    let winnerId: Id<'gamePlayers'> | undefined
+
+    if (!isSolo) {
+      // Get all players and check timeline sizes
+      const allPlayers = await ctx.db
+        .query('gamePlayers')
+        .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
+        .collect()
+
+      for (const player of allPlayers) {
+        const playerTimeline = await ctx.db
+          .query('timelineEntries')
+          .withIndex('by_playerId', (q) => q.eq('playerId', player._id))
+          .collect()
+
+        if (playerTimeline.length >= game.winCondition) {
+          winnerId = player._id
           break
         }
       }
-
-      // If no winning bettor, card is discarded
-      if (cardWentTo === 'discard') {
-        await ctx.db.patch('gameCards', card._id, { state: 'discarded' })
-      }
     }
 
-    // Check win condition
-    let winnerId: Id<'gamePlayers'> | undefined
-
-    // Get all players and check timeline sizes
-    const allPlayers = await ctx.db
-      .query('gamePlayers')
-      .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
-      .collect()
-
-    for (const player of allPlayers) {
-      const playerTimeline = await ctx.db
-        .query('timelineEntries')
-        .withIndex('by_playerId', (q) => q.eq('playerId', player._id))
-        .collect()
-
-      if (playerTimeline.length >= game.winCondition) {
-        winnerId = player._id
-        break
-      }
-    }
-
-    // Advance turn
-    const nextSeatIndex = await advanceTurn(ctx, game)
+    // Advance turn (solo mode: always stay on seat 0)
+    const nextSeatIndex = isSolo ? 0 : await advanceTurn(ctx, game)
 
     if (winnerId) {
-      // Game over
+      // Game over (multiplayer win condition)
       await ctx.db.patch('games', args.gameId, {
         phase: 'finished',
         currentRound: undefined,
         winnerId,
         finishedAt: Date.now(),
       })
-    } else {
-      // Auto-draw next card for the new active player
-      const nextCard = await drawNextCard(ctx, game._id)
 
-      if (!nextCard) {
-        // No more cards - game ends (deck exhausted)
-        await ctx.db.patch('games', args.gameId, {
-          phase: 'finished',
-          currentRound: undefined,
-          finishedAt: Date.now(),
-        })
-      } else {
-        // Get the next active player
-        const nextPlayer = await ctx.db
+      return {
+        placementCorrect,
+        cardWentTo,
+        winningBettorId,
+        winnerId,
+        livesRemaining,
+        gameOver: true,
+      }
+    }
+
+    // Auto-draw next card for the next turn
+    const nextCard = await drawNextCard(ctx, game._id)
+
+    if (!nextCard) {
+      // No more cards - game ends (deck exhausted)
+      // For solo mode, record final score
+      const finalTimeline = isSolo
+        ? await ctx.db
+            .query('timelineEntries')
+            .withIndex('by_playerId', (q) => q.eq('playerId', activePlayer._id))
+            .collect()
+        : null
+
+      await ctx.db.patch('games', args.gameId, {
+        phase: 'finished',
+        currentRound: undefined,
+        finalScore: finalTimeline?.length,
+        finishedAt: Date.now(),
+      })
+
+      return {
+        placementCorrect,
+        cardWentTo,
+        winningBettorId,
+        winnerId: undefined,
+        livesRemaining,
+        gameOver: true,
+      }
+    }
+
+    // Get the next active player
+    const nextPlayer = isSolo
+      ? activePlayer
+      : await ctx.db
           .query('gamePlayers')
           .withIndex('by_gameId_and_seatIndex', (q) =>
             q.eq('gameId', game._id).eq('seatIndex', nextSeatIndex),
           )
           .unique()
 
-        if (!nextPlayer) {
-          throw new Error('Next player not found')
-        }
-
-        // Update card state to inRound
-        await ctx.db.patch('gameCards', nextCard._id, { state: 'inRound' })
-
-        // Continue to next turn with card already drawn
-        await ctx.db.patch('games', args.gameId, {
-          phase: 'awaitingPlacement',
-          currentTurnSeatIndex: nextSeatIndex,
-          currentRound: {
-            cardId: nextCard._id,
-            activePlayerId: nextPlayer._id,
-            placementIndex: undefined,
-            bets: [],
-            tokenClaimers: [],
-          },
-        })
-      }
+    if (!nextPlayer) {
+      throw new Error('Next player not found')
     }
+
+    // Update card state to inRound
+    await ctx.db.patch('gameCards', nextCard._id, { state: 'inRound' })
+
+    // Continue to next turn with card already drawn
+    await ctx.db.patch('games', args.gameId, {
+      phase: 'awaitingPlacement',
+      currentTurnSeatIndex: nextSeatIndex,
+      currentRound: {
+        cardId: nextCard._id,
+        activePlayerId: nextPlayer._id,
+        placementIndex: undefined,
+        bets: [],
+        tokenClaimers: [],
+      },
+    })
 
     return {
       placementCorrect,
       cardWentTo,
       winningBettorId,
       winnerId,
+      livesRemaining,
+      gameOver: false,
     }
   },
 })
@@ -818,9 +903,14 @@ export const tradeTokensForCard = mutation({
       throw new Error('No active round')
     }
 
-    const activePlayer = await ctx.db.get('gamePlayers', game.currentRound.activePlayerId)
+    const activePlayer = await ctx.db.get(
+      'gamePlayers',
+      game.currentRound.activePlayerId,
+    )
     if (!activePlayer || activePlayer._id !== args.actingPlayerId) {
-      throw new Error('Not your turn - can only trade tokens when you are the active player')
+      throw new Error(
+        'Not your turn - can only trade tokens when you are the active player',
+      )
     }
 
     await verifyCanActForPlayer(ctx, game, activePlayer)

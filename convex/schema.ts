@@ -11,7 +11,11 @@ const gamePhaseValidator = v.union(
 )
 
 // Game modes
-const gameModeValidator = v.union(v.literal('hostOnly'), v.literal('sidecars'))
+const gameModeValidator = v.union(
+  v.literal('hostOnly'),
+  v.literal('sidecars'),
+  v.literal('solo'),
+)
 
 // Card states in the deck
 const cardStateValidator = v.union(
@@ -145,6 +149,11 @@ export default defineSchema({
     currentTurnSeatIndex: v.number(), // Which seat is active (0-indexed)
     currentRound: v.optional(currentRoundValidator),
     winnerId: v.optional(v.id('gamePlayers')), // Set when game is finished
+
+    // Solo mode fields
+    lives: v.optional(v.number()), // Current lives remaining (solo mode only)
+    startingLives: v.optional(v.number()), // For displaying "2/3 lives"
+    finalScore: v.optional(v.number()), // Timeline cards when game ends
 
     // Metadata
     createdAt: v.number(),

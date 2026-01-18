@@ -2,7 +2,11 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMutation } from 'convex/react'
 import { useState } from 'react'
-import { ArrowsClockwiseIcon, GoogleLogoIcon } from '@phosphor-icons/react'
+import {
+  ArrowsClockwiseIcon,
+  GoogleLogoIcon,
+  UserIcon,
+} from '@phosphor-icons/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
 import { listMyPlaylistsQuery } from '@/lib/convex-queries'
@@ -65,6 +69,9 @@ function HomePage() {
         {/* Join Game - Always available */}
         <JoinGameSection />
 
+        {/* Solo Play - available to logged in users */}
+        {isLoggedIn && <SoloPlaySection />}
+
         {/* Create Game or Login CTA */}
         {canCreateGame ? (
           <CreateGameSection />
@@ -104,7 +111,10 @@ function JoinGameSection() {
 
     try {
       await joinByCode({ joinCode: joinCode.trim() })
-      navigate({ to: '/play/$joinCode', params: { joinCode: joinCode.trim().toUpperCase() } })
+      navigate({
+        to: '/play/$joinCode',
+        params: { joinCode: joinCode.trim().toUpperCase() },
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game')
     } finally {
@@ -186,6 +196,104 @@ function LoginCTA({ isGuest }: LoginCTAProps) {
             to join games only
           </p>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function SoloPlaySection() {
+  const navigate = useNavigate()
+  const { data: playlists } = useSuspenseQuery(listMyPlaylistsQuery())
+  const [selectedPlaylist, setSelectedPlaylist] = useState<string>('')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createGame = useMutation(api.games.create)
+  const readyPlaylists = playlists.filter((p) => p.status === 'ready')
+
+  const handleStartSolo = async () => {
+    if (!selectedPlaylist) {
+      setError('Please select a playlist')
+      return
+    }
+
+    setError(null)
+    setCreating(true)
+
+    try {
+      const result = await createGame({
+        playlistId: selectedPlaylist as Id<'playlists'>,
+        mode: 'solo',
+      })
+      navigate({ to: '/play/$joinCode', params: { joinCode: result.joinCode } })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start game')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  if (readyPlaylists.length === 0) {
+    return (
+      <Card className="border-primary/20 bg-gradient-to-br from-amber-500/5 to-orange-500/10">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <UserIcon weight="duotone" className="size-5 text-amber-500" />
+            <CardTitle>Solo Play</CardTitle>
+          </div>
+          <CardDescription>Import a playlist to play solo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button render={<Link to="/playlists" />} variant="outline">
+            Import a Playlist
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="border-primary/20 bg-gradient-to-br from-amber-500/5 to-orange-500/10">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <UserIcon weight="duotone" className="size-5 text-amber-500" />
+          <CardTitle>Solo Play</CardTitle>
+        </div>
+        <CardDescription>
+          Challenge yourself! You have 3 lives - how many songs can you place
+          correctly?
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Select
+          value={selectedPlaylist || null}
+          onValueChange={(value) => setSelectedPlaylist(value ?? '')}
+        >
+          <SelectTrigger>
+            <SelectValue>
+              {selectedPlaylist
+                ? readyPlaylists.find((p) => p._id === selectedPlaylist)?.name
+                : 'Choose a playlist...'}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {readyPlaylists.map((p) => (
+              <SelectItem key={p._id} value={p._id}>
+                {p.name} ({p.readyTracks} tracks)
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <Button
+          onClick={handleStartSolo}
+          disabled={creating || !selectedPlaylist}
+          className="w-full"
+        >
+          {creating ? 'Starting...' : 'Start Solo Game'}
+        </Button>
       </CardContent>
     </Card>
   )
@@ -291,7 +399,10 @@ function CreateGameSection() {
               </p>
               {processingPlaylists.length > 0 && (
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <ArrowsClockwiseIcon weight="duotone" className="size-4 animate-spin" />
+                  <ArrowsClockwiseIcon
+                    weight="duotone"
+                    className="size-4 animate-spin"
+                  />
                   {processingPlaylists.length} playlist
                   {processingPlaylists.length !== 1 && 's'} still processing...
                 </p>
@@ -403,7 +514,9 @@ function CreateGameSection() {
 
         <Button
           onClick={handleCreate}
-          disabled={creating || !selectedPlaylist || readyPlaylists.length === 0}
+          disabled={
+            creating || !selectedPlaylist || readyPlaylists.length === 0
+          }
           className="w-full"
         >
           {creating ? 'Creating...' : 'Create Game'}

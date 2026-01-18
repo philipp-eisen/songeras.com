@@ -9,6 +9,8 @@ import {
   GameHeader,
   GameStickyFooter,
   LobbyView,
+  SoloFinishedView,
+  SoloHeader,
 } from '@/components/play'
 import {
   getAllTimelinesQuery,
@@ -147,12 +149,20 @@ function GamePage() {
     return <ActiveGameView game={game} />
   }
 
+  const isSolo = game.mode === 'solo'
+
   // Lobby/Finished layout: standard scrolling page
+  // Note: Solo mode never shows lobby (auto-starts), only finished view
   return (
     <div className="space-y-4 p-4">
-      <GameHeader game={game} />
-      {game.phase === 'lobby' && <LobbyView game={game} />}
-      {game.phase === 'finished' && <FinishedView game={game} />}
+      {!isSolo && <GameHeader game={game} />}
+      {game.phase === 'lobby' && !isSolo && <LobbyView game={game} />}
+      {game.phase === 'finished' &&
+        (isSolo ? (
+          <SoloFinishedView game={game} />
+        ) : (
+          <FinishedView game={game} />
+        ))}
     </div>
   )
 }
@@ -174,12 +184,22 @@ function ActiveGameView({
     await triggerExitAnimation()
   }
 
+  const isSolo = game.mode === 'solo'
+  const myTimeline = timelineData.find((t) => t.isCurrentUser)
+
   return (
     <div className="flex h-full flex-col">
       {/* Scrollable main content */}
       <ScrollArea className="flex-1">
         <div className="space-y-4 p-4 pb-0">
-          <GameHeader game={game} />
+          {isSolo ? (
+            <SoloHeader
+              game={game}
+              timelineSize={myTimeline?.cards.length ?? 1}
+            />
+          ) : (
+            <GameHeader game={game} />
+          )}
           <GameControlsBar game={game} timelines={timelineData} />
         </div>
       </ScrollArea>
