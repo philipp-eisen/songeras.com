@@ -104,7 +104,10 @@ function JoinGameSection() {
 
     try {
       await joinByCode({ joinCode: joinCode.trim() })
-      navigate({ to: '/play/$joinCode', params: { joinCode: joinCode.trim().toUpperCase() } })
+      navigate({
+        to: '/play/$joinCode',
+        params: { joinCode: joinCode.trim().toUpperCase() },
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to join game')
     } finally {
@@ -291,7 +294,10 @@ function CreateGameSection() {
               </p>
               {processingPlaylists.length > 0 && (
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <ArrowsClockwiseIcon weight="duotone" className="size-4 animate-spin" />
+                  <ArrowsClockwiseIcon
+                    weight="duotone"
+                    className="size-4 animate-spin"
+                  />
                   {processingPlaylists.length} playlist
                   {processingPlaylists.length !== 1 && 's'} still processing...
                 </p>
@@ -403,7 +409,9 @@ function CreateGameSection() {
 
         <Button
           onClick={handleCreate}
-          disabled={creating || !selectedPlaylist || readyPlaylists.length === 0}
+          disabled={
+            creating || !selectedPlaylist || readyPlaylists.length === 0
+          }
           className="w-full"
         >
           {creating ? 'Creating...' : 'Create Game'}

@@ -1,9 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { GameData, TimelineData } from '@/components/play/types'
-import {
-  usePlayGameStore,
-  useResetDndState,
-} from '@/stores/play-game-store'
+import { usePlayGameStore, useResetDndState } from '@/stores/play-game-store'
 
 /**
  * Syncs React Query game and timeline data to the Zustand store.

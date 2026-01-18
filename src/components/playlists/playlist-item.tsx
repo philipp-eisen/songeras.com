@@ -177,4 +177,3 @@ export function PlaylistItem({ playlist }: PlaylistItemProps) {
     </li>
   )
 }
-

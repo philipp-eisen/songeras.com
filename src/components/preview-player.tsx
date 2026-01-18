@@ -105,7 +105,24 @@ export function PreviewPlayer({
     )
   }
 
-  // Error state
+  // Autoplay blocked state - show a friendly "Tap to play" button
+  const isAutoplayBlocked =
+    isCurrentTrack && state.error?.includes('Tap to play')
+
+  if (isAutoplayBlocked) {
+    return (
+      <Button
+        variant="default"
+        className={cn('w-full justify-start gap-3', className)}
+        onClick={handleToggle}
+      >
+        <PlayIcon weight="duotone" className="h-5 w-5" />
+        <span>Tap to play</span>
+      </Button>
+    )
+  }
+
+  // Other error states
   if (isCurrentTrack && state.error) {
     return (
       <div
@@ -114,7 +131,7 @@ export function PreviewPlayer({
           className,
         )}
       >
-        <span className="text-sm text-destructive">⚠️ {state.error}</span>
+        <span className="text-sm text-destructive">{state.error}</span>
       </div>
     )
   }

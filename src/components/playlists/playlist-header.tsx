@@ -18,4 +18,3 @@ export function PlaylistHeader({ name }: PlaylistHeaderProps) {
     </div>
   )
 }
-

@@ -43,4 +43,3 @@ export function TrackList({ tracks }: TrackListProps) {
     </Card>
   )
 }
-

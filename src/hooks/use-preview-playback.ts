@@ -175,12 +175,14 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
         if (error instanceof DOMException && error.name === 'NotAllowedError') {
           setState((prev) => ({
             ...prev,
-            error: 'Playback blocked. Please click to play.',
+            isLoading: false,
+            error: 'Playback blocked. Tap to play.',
           }))
         } else {
           console.error('[PreviewPlayback] Play error:', error)
           setState((prev) => ({
             ...prev,
+            isLoading: false,
             error: 'Failed to start playback',
           }))
         }

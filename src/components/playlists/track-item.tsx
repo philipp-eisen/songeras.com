@@ -123,13 +123,13 @@ export function TrackItem({ track }: TrackItemProps) {
       {/* Mobile-only status indicator */}
       <div className="sm:hidden">
         {isReady && (
-          <CheckCircleIcon
-            weight="duotone"
-            className="size-5 text-primary"
-          />
+          <CheckCircleIcon weight="duotone" className="size-5 text-primary" />
         )}
         {isPending && (
-          <ClockIcon weight="duotone" className="size-5 text-muted-foreground" />
+          <ClockIcon
+            weight="duotone"
+            className="size-5 text-muted-foreground"
+          />
         )}
         {isUnmatched && (
           <XCircleIcon weight="duotone" className="size-5 text-warning" />
@@ -189,4 +189,3 @@ export function TrackItem({ track }: TrackItemProps) {
     </li>
   )
 }
-

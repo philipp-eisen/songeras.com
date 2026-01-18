@@ -28,12 +28,7 @@ export function TimelineCardWrapper({
 }: TimelineCardWrapperProps) {
   const showResult = isRevealed && isCorrect !== undefined
   return (
-    <div
-      className={cn(
-        'relative shrink-0',
-        className,
-      )}
-    >
+    <div className={cn('relative shrink-0', className)}>
       {/* Year marker container - absolutely positioned on both mobile and desktop */}
       <div
         className={cn(
@@ -93,7 +88,10 @@ export function TimelineCardWrapper({
                     scale: { delay: 0.7, duration: 0.4, repeat: 2 },
                   }}
                 >
-                  <CheckCircleIcon className="size-5 text-white" weight="duotone" />
+                  <CheckCircleIcon
+                    className="size-5 text-white"
+                    weight="duotone"
+                  />
                 </motion.div>
               ) : (
                 <motion.div
