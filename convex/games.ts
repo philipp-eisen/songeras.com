@@ -1,7 +1,7 @@
 import { v } from 'convex/values'
 import { mutation, query } from './_generated/server'
-import type { QueryCtx } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
+import type { MutationCtx, QueryCtx } from './_generated/server'
 
 // ===========================================
 // Validators (exported for reuse)
@@ -48,6 +48,27 @@ function shuffleArray<T>(array: Array<T>): Array<T> {
   return shuffled
 }
 
+/**
+ * Re-index player seats after a player is removed
+ */
+async function reindexPlayerSeats(
+  ctx: MutationCtx,
+  gameId: Id<'games'>,
+): Promise<void> {
+  const players = await ctx.db
+    .query('gamePlayers')
+    .withIndex('by_gameId', (q) => q.eq('gameId', gameId))
+    .collect()
+
+  players.sort((a, b) => a.seatIndex - b.seatIndex)
+
+  for (let i = 0; i < players.length; i++) {
+    if (players[i].seatIndex !== i) {
+      await ctx.db.patch('gamePlayers', players[i]._id, { seatIndex: i })
+    }
+  }
+}
+
 // ===========================================
 // Game Creation
 // ===========================================
@@ -84,7 +105,7 @@ export const create = mutation({
     const userName = identity.name ?? 'Host'
 
     // Verify the playlist exists and belongs to the user
-    const playlist = await ctx.db.get("playlists", args.playlistId)
+    const playlist = await ctx.db.get('playlists', args.playlistId)
     if (!playlist || playlist.ownerUserId !== userId) {
       throw new Error('Playlist not found or not owned by you')
     }
@@ -170,7 +191,7 @@ export const addLocalPlayer = mutation({
       throw new Error('Not authenticated')
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       throw new Error('Game not found')
     }
@@ -220,12 +241,12 @@ export const removeLocalPlayer = mutation({
       throw new Error('Not authenticated')
     }
 
-    const player = await ctx.db.get("gamePlayers", args.playerId)
+    const player = await ctx.db.get('gamePlayers', args.playerId)
     if (!player) {
       throw new Error('Player not found')
     }
 
-    const game = await ctx.db.get("games", player.gameId)
+    const game = await ctx.db.get('games', player.gameId)
     if (!game) {
       throw new Error('Game not found')
     }
@@ -246,26 +267,9 @@ export const removeLocalPlayer = mutation({
       throw new Error('Cannot remove the host seat')
     }
 
-    // Delete the player
-    await ctx.db.delete("gamePlayers", args.playerId)
-
-    // Re-index remaining players
-    const remainingPlayers = await ctx.db
-      .query('gamePlayers')
-      .withIndex('by_gameId', (q) => q.eq('gameId', player.gameId))
-      .collect()
-
-    // Sort by current seatIndex
-    remainingPlayers.sort((a, b) => a.seatIndex - b.seatIndex)
-
-    // Update seat indices
-    for (let i = 0; i < remainingPlayers.length; i++) {
-      if (remainingPlayers[i].seatIndex !== i) {
-        await ctx.db.patch("gamePlayers", remainingPlayers[i]._id, {
-          seatIndex: i,
-        })
-      }
-    }
+    // Delete the player and re-index seats
+    await ctx.db.delete('gamePlayers', args.playerId)
+    await reindexPlayerSeats(ctx, player.gameId)
 
     return null
   },
@@ -359,7 +363,7 @@ export const leave = mutation({
       throw new Error('Not authenticated')
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       throw new Error('Game not found')
     }
@@ -384,24 +388,9 @@ export const leave = mutation({
       throw new Error('Host cannot leave. Delete the game instead.')
     }
 
-    // Delete the player
-    await ctx.db.delete("gamePlayers", player._id)
-
-    // Re-index remaining players
-    const remainingPlayers = await ctx.db
-      .query('gamePlayers')
-      .withIndex('by_gameId', (q) => q.eq('gameId', args.gameId))
-      .collect()
-
-    remainingPlayers.sort((a, b) => a.seatIndex - b.seatIndex)
-
-    for (let i = 0; i < remainingPlayers.length; i++) {
-      if (remainingPlayers[i].seatIndex !== i) {
-        await ctx.db.patch("gamePlayers", remainingPlayers[i]._id, {
-          seatIndex: i,
-        })
-      }
-    }
+    // Delete the player and re-index seats
+    await ctx.db.delete('gamePlayers', player._id)
+    await reindexPlayerSeats(ctx, args.gameId)
 
     return null
   },
@@ -421,7 +410,7 @@ export const deleteGame = mutation({
       throw new Error('Not authenticated')
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       throw new Error('Game not found')
     }
@@ -441,11 +430,11 @@ export const deleteGame = mutation({
       .collect()
 
     for (const player of players) {
-      await ctx.db.delete("gamePlayers", player._id)
+      await ctx.db.delete('gamePlayers', player._id)
     }
 
     // Delete the game
-    await ctx.db.delete("games", args.gameId)
+    await ctx.db.delete('games', args.gameId)
 
     return null
   },
@@ -472,7 +461,7 @@ export const start = mutation({
       throw new Error('Not authenticated')
     }
 
-    const game = await ctx.db.get("games", args.gameId)
+    const game = await ctx.db.get('games', args.gameId)
     if (!game) {
       throw new Error('Game not found')
     }
@@ -486,7 +475,7 @@ export const start = mutation({
     }
 
     // Verify playlist is ready
-    const playlist = await ctx.db.get("playlists", game.playlistId)
+    const playlist = await ctx.db.get('playlists', game.playlistId)
     if (!playlist) {
       throw new Error('Playlist not found')
     }
@@ -533,9 +522,7 @@ export const start = mutation({
       }))
 
     if (trackData.length < players.length + 10) {
-      throw new Error(
-        `Not enough tracks with release years for a good game`,
-      )
+      throw new Error(`Not enough tracks with release years for a good game`)
     }
 
     // Shuffle the tracks
@@ -559,7 +546,7 @@ export const start = mutation({
       const cardId = gameCardIds[i]
 
       // Update card state
-      await ctx.db.patch("gameCards", cardId, {
+      await ctx.db.patch('gameCards', cardId, {
         state: 'timeline',
         ownerPlayerId: players[i]._id,
         deckOrder: undefined,
@@ -577,20 +564,20 @@ export const start = mutation({
     // Update remaining deck cards' deckOrder (they shift down by players.length)
     // Skip the first remaining card since we'll use it for the first round
     for (let i = players.length + 1; i < gameCardIds.length; i++) {
-      await ctx.db.patch("gameCards", gameCardIds[i], {
+      await ctx.db.patch('gameCards', gameCardIds[i], {
         deckOrder: i - players.length - 1,
       })
     }
 
     // Draw the first card for the first player's turn
     const firstRoundCardId = gameCardIds[players.length]
-    await ctx.db.patch("gameCards", firstRoundCardId, {
+    await ctx.db.patch('gameCards', firstRoundCardId, {
       state: 'inRound',
       deckOrder: undefined,
     })
 
     // Update game state with first round already set up
-    await ctx.db.patch("games", args.gameId, {
+    await ctx.db.patch('games', args.gameId, {
       phase: 'awaitingPlacement',
       currentTurnSeatIndex: 0,
       startedAt: Date.now(),
@@ -887,7 +874,7 @@ export const listMine = query({
 
     // Add hosted games
     for (const game of hostedGames) {
-      const playlist = await ctx.db.get("playlists", game.playlistId)
+      const playlist = await ctx.db.get('playlists', game.playlistId)
       const players = await ctx.db
         .query('gamePlayers')
         .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
@@ -909,10 +896,10 @@ export const listMine = query({
 
     // Add joined games (where not host)
     for (const gameId of joinedGameIds) {
-      const game = await ctx.db.get("games", gameId)
+      const game = await ctx.db.get('games', gameId)
       if (!game) continue
 
-      const playlist = await ctx.db.get("playlists", game.playlistId)
+      const playlist = await ctx.db.get('playlists', game.playlistId)
       const players = await ctx.db
         .query('gamePlayers')
         .withIndex('by_gameId', (q) => q.eq('gameId', game._id))

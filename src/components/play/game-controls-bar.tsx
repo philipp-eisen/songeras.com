@@ -8,6 +8,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 import { useMutation } from 'convex/react'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef } from 'react'
@@ -130,7 +131,8 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
 
   // Effect 1: Sync DnD items when timeline cards change (handle external server updates)
   useEffect(() => {
-    const cardIds = activePlayerTimeline?.cards.map((c) => c._id as string) ?? []
+    const cardIds =
+      activePlayerTimeline?.cards.map((c) => c._id as string) ?? []
     const currentCardIds = items.filter((id) => id !== MYSTERY_CARD_ID)
     const cardsChanged =
       currentCardIds.length !== cardIds.length ||
@@ -153,7 +155,12 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       newItems.splice(insertAt, 0, MYSTERY_CARD_ID)
       setDndItems(newItems)
     }
-  }, [activePlayerTimeline?.cards, items, game.currentRound?.placementIndex, setDndItems])
+  }, [
+    activePlayerTimeline?.cards,
+    items,
+    game.currentRound?.placementIndex,
+    setDndItems,
+  ])
 
   // Effect 2: Ensure mystery card is in list during repositioning
   // This handles the case when placementIndex becomes defined after Effect 1 has run
@@ -162,36 +169,47 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
     if (placementIdx === undefined) return
     if (items.includes(MYSTERY_CARD_ID)) return
 
-    const cardIds = activePlayerTimeline?.cards.map((c) => c._id as string) ?? []
+    const cardIds =
+      activePlayerTimeline?.cards.map((c) => c._id as string) ?? []
     const newItems = [...cardIds]
     newItems.splice(Math.min(placementIdx, cardIds.length), 0, MYSTERY_CARD_ID)
     setDndItems(newItems)
-  }, [game.currentRound?.placementIndex, items, activePlayerTimeline?.cards, setDndItems])
+  }, [
+    game.currentRound?.placementIndex,
+    items,
+    activePlayerTimeline?.cards,
+    setDndItems,
+  ])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 8 },
+    }),
   )
 
   // Get wrapAction from store for placement
   const wrapAction = usePlayGameStore((state) => state.wrapAction)
 
-  const handlePlaceCard = useCallback(async (insertIndex: number) => {
-    if (!activePlayer) return
+  const handlePlaceCard = useCallback(
+    async (insertIndex: number) => {
+      if (!activePlayer) return
 
-    try {
-      await wrapAction(async () => {
-        await placeCard({
-          gameId: game._id,
-          actingPlayerId: activePlayer._id,
-          insertIndex,
+      try {
+        await wrapAction(async () => {
+          await placeCard({
+            gameId: game._id,
+            actingPlayerId: activePlayer._id,
+            insertIndex,
+          })
         })
-      })
-    } catch {
-      // Error is already handled by wrapAction
-    }
-  }, [activePlayer, game._id, placeCard, wrapAction])
+      } catch {
+        // Error is already handled by wrapAction
+      }
+    },
+    [activePlayer, game._id, placeCard, wrapAction],
+  )
 
   const handleDragStart = useCallback(
     (event: { active: { id: string | number } }) => {
@@ -201,30 +219,33 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
     [setDndActiveId, setWasExternalDrag],
   )
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { active, over } = event
-    const activeItemId = String(active.id)
-    const overId = over ? String(over.id) : null
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const { active, over } = event
+      const activeItemId = String(active.id)
+      const overId = over ? String(over.id) : null
 
-    if (activeItemId !== MYSTERY_CARD_ID) return
-    if (!overId) return
+      if (activeItemId !== MYSTERY_CARD_ID) return
+      if (!overId) return
 
-    const currentItems = itemsRef.current
-    if (currentItems.includes(MYSTERY_CARD_ID)) return
+      const currentItems = itemsRef.current
+      if (currentItems.includes(MYSTERY_CARD_ID)) return
 
-    const insertAt =
-      currentItems.length === 0 && overId === 'timeline-empty-slot'
-        ? 0
-        : currentItems.indexOf(overId)
+      const insertAt =
+        currentItems.length === 0 && overId === 'timeline-empty-slot'
+          ? 0
+          : currentItems.indexOf(overId)
 
-    if (insertAt === -1) return
+      if (insertAt === -1) return
 
-    const newItems = [...currentItems]
-    newItems.splice(insertAt, 0, MYSTERY_CARD_ID)
-    itemsRef.current = newItems
-    setWasExternalDrag(true)
-    setDndItems(newItems)
-  }, [setWasExternalDrag, setDndItems])
+      const newItems = [...currentItems]
+      newItems.splice(insertAt, 0, MYSTERY_CARD_ID)
+      itemsRef.current = newItems
+      setWasExternalDrag(true)
+      setDndItems(newItems)
+    },
+    [setWasExternalDrag, setDndItems],
+  )
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -234,7 +255,9 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
 
       if (isPlacing) {
         if (activeItemId === MYSTERY_CARD_ID && wasExternalDrag) {
-          const newItems = itemsRef.current.filter((id) => id !== MYSTERY_CARD_ID)
+          const newItems = itemsRef.current.filter(
+            (id) => id !== MYSTERY_CARD_ID,
+          )
           itemsRef.current = newItems
           setDndItems(newItems)
         }
@@ -244,7 +267,9 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
 
       if (!over) {
         if (activeItemId === MYSTERY_CARD_ID && wasExternalDrag) {
-          const newItems = itemsRef.current.filter((id) => id !== MYSTERY_CARD_ID)
+          const newItems = itemsRef.current.filter(
+            (id) => id !== MYSTERY_CARD_ID,
+          )
           itemsRef.current = newItems
           setDndItems(newItems)
         }
@@ -255,7 +280,10 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       const overId = String(over.id)
 
       // Handle drop into empty timeline
-      if (activeItemId === MYSTERY_CARD_ID && overId === 'timeline-empty-slot') {
+      if (
+        activeItemId === MYSTERY_CARD_ID &&
+        overId === 'timeline-empty-slot'
+      ) {
         let newItems = itemsRef.current
         if (!newItems.includes(MYSTERY_CARD_ID)) {
           newItems = [MYSTERY_CARD_ID]
@@ -283,11 +311,7 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       const didMove = oldIndex !== overIndex
 
       if (didMove) {
-        // arrayMove logic inline
-        const result = [...currentItems]
-        const [removed] = result.splice(oldIndex, 1)
-        result.splice(overIndex, 0, removed)
-        newItems = result
+        newItems = arrayMove(currentItems, oldIndex, overIndex)
         itemsRef.current = newItems
         setDndItems(newItems)
       }
@@ -303,7 +327,14 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
 
       setWasExternalDrag(false)
     },
-    [isPlacing, wasExternalDrag, handlePlaceCard, setDndActiveId, setDndItems, setWasExternalDrag],
+    [
+      isPlacing,
+      wasExternalDrag,
+      handlePlaceCard,
+      setDndActiveId,
+      setDndItems,
+      setWasExternalDrag,
+    ],
   )
 
   const isDragging = activeId === MYSTERY_CARD_ID
@@ -393,9 +424,7 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       ) : null}
 
       {placementError && (
-        <p className="text-center text-sm text-destructive">
-          {placementError}
-        </p>
+        <p className="text-center text-sm text-destructive">{placementError}</p>
       )}
 
       {/* Betting controls for non-active players */}

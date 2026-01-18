@@ -9,12 +9,8 @@ export { ActionButtons } from './action-zone'
 export { MysteryCardStack, MYSTERY_CARD_ID } from './mystery-card-stack'
 export { GameControlsBar } from './game-controls-bar'
 export { PlayerStatusBar } from './player-status-bar'
-export { TurnPrompt } from './turn-prompt'
 export { GameStickyFooter } from './game-sticky-footer'
 export { GameCard } from './game-card'
 export { RoundTimelineCard, DraggableMysteryCard } from './round-timeline-card'
-export {
-  computeValidInsertionIndices,
-  isPlacementCorrect,
-} from './placement-utils'
+export { isPlacementCorrect } from './placement-utils'
 export type { GameData, PlayerData, TimelineData, CardData } from './types'

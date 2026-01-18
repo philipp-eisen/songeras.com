@@ -93,7 +93,10 @@ export function PreviewPlayer({
         )}
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary">
-          <MusicNoteIcon weight="duotone" className="h-4 w-4 text-muted-foreground" />
+          <MusicNoteIcon
+            weight="duotone"
+            className="h-4 w-4 text-muted-foreground"
+          />
         </div>
         <span className="text-sm text-muted-foreground">
           No preview available
@@ -149,7 +152,7 @@ export function PreviewPlayer({
         variant={isPlaying ? 'secondary' : 'default'}
         size="icon"
         className={cn(
-          'h-10 w-10 rounded-full shrink-0 transition-all overflow-hidden',
+          'group h-10 w-10 rounded-full shrink-0 transition-all overflow-hidden',
           isPlaying && 'bg-primary text-primary-foreground',
           artworkUrl && 'p-0',
         )}
@@ -164,8 +167,8 @@ export function PreviewPlayer({
               src={artworkUrl}
               alt=""
               className={cn(
-                'h-full w-full object-cover transition-opacity',
-                isPlaying && 'opacity-50',
+                'h-full w-full object-cover transition-opacity group-hover:opacity-50',
+                isPlaying && 'opacity-50 group-hover:opacity-30',
               )}
             />
             <div className="absolute inset-0 flex items-center justify-center">
@@ -177,7 +180,7 @@ export function PreviewPlayer({
               ) : (
                 <PlayIcon
                   weight="duotone"
-                  className="h-5 w-5 text-white drop-shadow"
+                  className="h-5 w-5 text-white drop-shadow opacity-0 group-hover:opacity-100 transition-opacity"
                 />
               )}
             </div>
