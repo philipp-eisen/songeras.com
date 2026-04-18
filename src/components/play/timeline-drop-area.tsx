@@ -14,6 +14,7 @@ import { GameCard } from './game-card'
 import { MYSTERY_CARD_ID } from './mystery-card-stack'
 import { DraggableMysteryCard } from './round-timeline-card'
 import { TimelineCardWrapper } from './timeline-card-wrapper'
+import { TimelineDirectionLabel } from './timeline-direction-label'
 import { TimelineRail } from './timeline-rail'
 import type { ReactNode } from 'react'
 import type { TimelineData } from './types'
@@ -96,6 +97,8 @@ export function TimelineDropArea({
               {/* Timeline rail */}
               <TimelineRail />
 
+              <TimelineDirectionLabel direction="earlier" />
+
               {items.length === 0 ? (
                 <TimelineEmptyDropSlot disabled={dragDisabled} />
               ) : (
@@ -116,6 +119,8 @@ export function TimelineDropArea({
                   return <SortableTimelineCard key={id} id={id} card={card} />
                 })
               )}
+
+              <TimelineDirectionLabel direction="later" />
             </motion.div>
           </div>
         </CardContent>
