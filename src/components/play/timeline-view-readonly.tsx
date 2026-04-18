@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { GameCard } from './game-card'
 import { RoundTimelineCard } from './round-timeline-card'
 import { TimelineCardWrapper } from './timeline-card-wrapper'
+import { TimelineDirectionLabel } from './timeline-direction-label'
 import { TimelineRail } from './timeline-rail'
 import { isPlacementCorrect } from './placement-utils'
 
@@ -118,6 +119,8 @@ export function TimelineViewReadonly({
             {/* Timeline rail */}
             <TimelineRail />
 
+            <TimelineDirectionLabel direction="earlier" />
+
             {displayCards.length === 0 ? (
               <p className="text-sm text-muted-foreground">No cards yet</p>
             ) : (
@@ -158,6 +161,8 @@ export function TimelineViewReadonly({
                 ),
               )
             )}
+
+            <TimelineDirectionLabel direction="later" />
           </motion.div>
         </div>
       </CardContent>
