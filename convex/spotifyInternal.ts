@@ -1,4 +1,6 @@
 import { v } from 'convex/values'
+import { preserveTrackForGames } from './lib/gameCards'
+import { playlistSourceValidator } from './lib/validators'
 import { internalMutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 
@@ -13,7 +15,7 @@ import type { Id } from './_generated/dataModel'
 export const upsertPlaylistWithTracks = internalMutation({
   args: {
     ownerUserId: v.string(),
-    source: v.union(v.literal('spotify'), v.literal('appleMusic')),
+    source: playlistSourceValidator,
     sourcePlaylistId: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
@@ -40,9 +42,10 @@ export const upsertPlaylistWithTracks = internalMutation({
     // Check if playlist already exists for this user
     const existing = await ctx.db
       .query('playlists')
-      .withIndex('by_ownerUserId_and_sourcePlaylistId', (q) =>
+      .withIndex('by_ownerUserId_and_source_and_sourcePlaylistId', (q) =>
         q
           .eq('ownerUserId', args.ownerUserId)
+          .eq('source', args.source)
           .eq('sourcePlaylistId', args.sourcePlaylistId),
       )
       .unique()
@@ -59,43 +62,35 @@ export const upsertPlaylistWithTracks = internalMutation({
         .collect()
 
       for (const track of existingTracks) {
+        await preserveTrackForGames(ctx, track)
         await ctx.db.delete('playlistTracks', track._id)
       }
-
-      // Update playlist metadata
-      await ctx.db.patch('playlists', playlistId, {
-        name: args.name,
-        description: args.description,
-        imageUrl: args.imageUrl,
-        importedAt: now,
-        status: args.source === 'appleMusic' ? 'ready' : 'processing',
-        totalTracks: args.tracks.length,
-        readyTracks: 0,
-        unmatchedTracks: 0,
-      })
     } else {
-      // Create new playlist
       playlistId = await ctx.db.insert('playlists', {
         ownerUserId: args.ownerUserId,
         source: args.source,
         sourcePlaylistId: args.sourcePlaylistId,
         name: args.name,
-        description: args.description,
-        imageUrl: args.imageUrl,
         importedAt: now,
-        status: args.source === 'appleMusic' ? 'ready' : 'processing',
-        totalTracks: args.tracks.length,
+        status: 'importing',
+        totalTracks: 0,
         readyTracks: 0,
         unmatchedTracks: 0,
       })
     }
 
+    let readyTracks = 0
     // Insert all tracks
     for (const track of args.tracks) {
       // Apple Music imports are ready immediately, Spotify imports are pending
       const isReady =
         args.source === 'appleMusic' ||
-        (track.appleMusicId && track.previewUrl && track.releaseYear)
+        Boolean(
+          track.appleMusicId &&
+          track.previewUrl &&
+          track.releaseYear !== undefined,
+        )
+      if (isReady) readyTracks += 1
 
       await ctx.db.insert('playlistTracks', {
         playlistId,
@@ -112,12 +107,16 @@ export const upsertPlaylistWithTracks = internalMutation({
       })
     }
 
-    // If Apple Music import, update readyTracks count
-    if (args.source === 'appleMusic') {
-      await ctx.db.patch('playlists', playlistId, {
-        readyTracks: args.tracks.length,
-      })
-    }
+    await ctx.db.patch('playlists', playlistId, {
+      name: args.name,
+      description: args.description,
+      imageUrl: args.imageUrl,
+      importedAt: now,
+      status: readyTracks === args.tracks.length ? 'ready' : 'processing',
+      totalTracks: args.tracks.length,
+      readyTracks,
+      unmatchedTracks: 0,
+    })
 
     return playlistId
   },

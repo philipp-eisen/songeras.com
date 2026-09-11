@@ -8,17 +8,19 @@ Song Game (Songeras) is a collaborative music-based timeline game where players 
 
 ## Commands
 
-| Command        | Purpose                                 |
-| -------------- | --------------------------------------- |
-| `pnpm dev`     | Start Convex backend + Vite dev servers |
-| `pnpm dev:web` | Start Vite dev server only              |
-| `pnpm dev:db`  | Start Convex backend only               |
-| `pnpm build`   | Build with Vite + type check            |
-| `pnpm test`    | Run Vitest unit tests                   |
-| `pnpm lint`    | Run ESLint                              |
-| `pnpm format`  | Format code with Prettier               |
-| `pnpm check`   | Format + lint with auto-fixes           |
-| `pnpm deploy`  | Deploy to Convex production             |
+| Command          | Purpose                                    |
+| ---------------- | ------------------------------------------ |
+| `pnpm dev`       | Start Convex backend + Vite dev servers    |
+| `pnpm dev:web`   | Start Vite dev server only                 |
+| `pnpm dev:db`    | Start Convex backend only                  |
+| `pnpm build`     | Build with Vite + type check               |
+| `pnpm test`      | Run local rule, backend, and browser tests |
+| `pnpm typecheck` | Check TypeScript types                     |
+| `pnpm lint`      | Run ESLint                                 |
+| `pnpm format`    | Format code with Prettier                  |
+| `pnpm check`     | Format + lint with auto-fixes              |
+| `pnpm deploy`    | Build and deploy to Cloudflare Workers     |
+| `pnpm build:ci`  | Deploy Convex and build the frontend       |
 
 ## Architecture
 
@@ -139,11 +141,13 @@ Routes use TanStack Router conventions:
 
 ### Play Game Store
 
-The `/src/stores/play-game-store.ts` manages client-side state for the play route:
+`PlayGameProvider` creates a separate store for each active game. `/src/stores/play-game-store.ts` manages:
 
 - Derived game state (activePlayer, isActivePlayer, myPlayer, isHost)
 - Drag-and-drop state for card placement
 - Unified loading/error state for mutations
+
+The provider synchronizes game and timeline query data in one update. New round card IDs reset drag state and exit animations, including single-player games. Placement rules live in `/shared/game-rules.ts` and must not be copied into frontend or backend modules.
 
 ### Usage Patterns
 

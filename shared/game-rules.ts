@@ -2,8 +2,6 @@
  * Compute valid insertion indices for a card with the given year.
  * Returns all valid indices where the card can be placed.
  *
- * This mirrors the backend logic in convex/turns.ts:computeValidInsertionIndices
- *
  * Rules:
  * - Timeline is sorted by release year (ascending)
  * - A card can go before any card with year >= its year
@@ -11,7 +9,7 @@
  * - If years are equal, adjacent placement is valid
  */
 export function computeValidInsertionIndices(
-  timeline: Array<{ releaseYear: number }>,
+  timeline: ReadonlyArray<{ releaseYear: number }>,
   newCardYear: number,
 ): Array<number> {
   const validIndices: Array<number> = []
@@ -39,10 +37,35 @@ export function computeValidInsertionIndices(
  * @returns true if the placement is valid, false otherwise
  */
 export function isPlacementCorrect(
-  timeline: Array<{ releaseYear: number }>,
+  timeline: ReadonlyArray<{ releaseYear: number }>,
   placementIndex: number,
   cardYear: number,
 ): boolean {
   const validIndices = computeValidInsertionIndices(timeline, cardYear)
   return validIndices.includes(placementIndex)
+}
+
+/** Place purchased cards after existing cards from the same year. */
+export function findCorrectInsertionIndex(
+  timeline: ReadonlyArray<{ releaseYear: number }>,
+  newCardYear: number,
+): number {
+  let low = 0
+  let high = timeline.length
+  while (low < high) {
+    const mid = Math.floor((low + high) / 2)
+    if (timeline[mid].releaseYear <= newCardYear) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+  return low
+}
+
+export function isValidSlotIndex(
+  index: number,
+  timelineLength: number,
+): boolean {
+  return Number.isInteger(index) && index >= 0 && index <= timelineLength
 }

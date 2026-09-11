@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect } from 'react'
 import {
   AppleLogoIcon,
   MusicNoteIcon,
@@ -44,11 +44,8 @@ export function PreviewPlayer({
   autoPlay = false,
 }: PreviewPlayerProps) {
   const appleMusicUrl = appleMusicId ? getAppleMusicUrl(appleMusicId) : null
-  const { state, play, togglePlayPause, seek, currentUrl } =
+  const { state, play, stop, togglePlayPause, seek, currentUrl } =
     usePreviewPlayback()
-
-  // Track the last auto-played URL to avoid replaying the same track
-  const lastAutoPlayedUrl = useRef<string | null>(null)
 
   const isCurrentTrack = currentUrl === previewUrl
   const isPlaying = isCurrentTrack && state.isPlaying
@@ -56,17 +53,12 @@ export function PreviewPlayer({
   const currentTime = isCurrentTrack ? state.currentTime : 0
   const duration = isCurrentTrack ? state.duration : 30 // Default to 30s for previews
 
-  // Auto-play when previewUrl changes
   useEffect(() => {
-    if (autoPlay && previewUrl && previewUrl !== lastAutoPlayedUrl.current) {
-      lastAutoPlayedUrl.current = previewUrl
-      // Small delay to ensure component is mounted
-      const timer = setTimeout(() => {
-        play(previewUrl)
-      }, 100)
-      return () => clearTimeout(timer)
+    if (autoPlay && previewUrl) {
+      void play(previewUrl)
     }
-  }, [autoPlay, previewUrl, play])
+    return stop
+  }, [autoPlay, previewUrl, play, stop])
 
   const handleToggle = useCallback(() => {
     if (previewUrl) {
@@ -114,6 +106,7 @@ export function PreviewPlayer({
       <Button
         variant="default"
         className={cn('w-full justify-start gap-3', className)}
+        aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
         onClick={handleToggle}
       >
         <PlayIcon weight="duotone" className="h-5 w-5" />
@@ -147,6 +140,7 @@ export function PreviewPlayer({
           isPlaying && 'bg-primary text-primary-foreground',
           className,
         )}
+        aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
         onClick={handleToggle}
         disabled={isLoading}
       >
@@ -173,6 +167,7 @@ export function PreviewPlayer({
           isPlaying && 'bg-primary text-primary-foreground',
           artworkUrl && 'p-0',
         )}
+        aria-label={isPlaying ? 'Pause preview' : 'Play preview'}
         onClick={handleToggle}
         disabled={isLoading}
       >
@@ -230,6 +225,7 @@ export function PreviewPlayer({
             {formatTime(currentTime)}
           </span>
           <input
+            aria-label="Preview position"
             type="range"
             min={0}
             max={duration || 30}

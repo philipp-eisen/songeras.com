@@ -1,10 +1,9 @@
 import { useDraggable } from '@dnd-kit/core'
 import { SealQuestionIcon } from '@phosphor-icons/react'
 import { motion } from 'motion/react'
+import { MYSTERY_CARD_ID } from './constants'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-
-export const MYSTERY_CARD_ID = 'mystery-card'
 
 interface MysteryCardStackProps {
   /** Number of cards remaining in the deck */

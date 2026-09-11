@@ -16,7 +16,8 @@ import { MusicNoteIcon } from '@phosphor-icons/react'
 
 import { api } from '../../../convex/_generated/api'
 import { BetControls } from './bet-controls'
-import { MYSTERY_CARD_ID, MysteryCardStack } from './mystery-card-stack'
+import { MysteryCardStack } from './mystery-card-stack'
+import { MYSTERY_CARD_ID } from './constants'
 import { PlayerStatusBar } from './player-status-bar'
 import { DraggableMysteryCard } from './round-timeline-card'
 import { TimelineDropArea } from './timeline-drop-area'
@@ -38,6 +39,7 @@ import {
   useIsExiting,
   useMyPlayer,
   usePlayGameStore,
+  useResetDndState,
   useSetDndActiveId,
   useSetDndItems,
   useSetWasExternalDrag,
@@ -97,6 +99,7 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
   // Get DnD state from store
   const { items, activeId, wasExternalDrag } = useDndState()
   const setDndItems = useSetDndItems()
+  const resetDndState = useResetDndState()
   const setDndActiveId = useSetDndActiveId()
   const setWasExternalDrag = useSetWasExternalDrag()
 
@@ -205,10 +208,11 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
           })
         })
       } catch {
+        resetDndState()
         // Error is already handled by wrapAction
       }
     },
-    [activePlayer, game._id, placeCard, wrapAction],
+    [activePlayer, game._id, placeCard, wrapAction, resetDndState],
   )
 
   const handleDragStart = useCallback(
@@ -253,27 +257,8 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       const activeItemId = String(active.id)
       setDndActiveId(null)
 
-      if (isPlacing) {
-        if (activeItemId === MYSTERY_CARD_ID && wasExternalDrag) {
-          const newItems = itemsRef.current.filter(
-            (id) => id !== MYSTERY_CARD_ID,
-          )
-          itemsRef.current = newItems
-          setDndItems(newItems)
-        }
-        setWasExternalDrag(false)
-        return
-      }
-
-      if (!over) {
-        if (activeItemId === MYSTERY_CARD_ID && wasExternalDrag) {
-          const newItems = itemsRef.current.filter(
-            (id) => id !== MYSTERY_CARD_ID,
-          )
-          itemsRef.current = newItems
-          setDndItems(newItems)
-        }
-        setWasExternalDrag(false)
+      if (isPlacing || !over) {
+        resetDndState()
         return
       }
 
@@ -329,6 +314,7 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
     },
     [
       isPlacing,
+      resetDndState,
       wasExternalDrag,
       handlePlaceCard,
       setDndActiveId,
@@ -358,6 +344,7 @@ export function GameControlsBar({ game, timelines }: GameControlsBarProps) {
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={resetDndState}
     >
       {/* Audio Player - outside animation to preserve playback */}
       <div className="space-y-4">

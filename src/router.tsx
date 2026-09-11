@@ -4,6 +4,7 @@ import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query
 import { ConvexQueryClient } from '@convex-dev/react-query'
 import { routeTree } from './routeTree.gen'
 import { PendingFallback } from './components/pending-fallback'
+import { RouteError } from './components/route-error'
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL
 
@@ -41,7 +42,7 @@ export function getRouter() {
     defaultPreloadStaleTime: 0, // Let React Query handle all caching
     defaultPendingComponent: PendingFallback,
     defaultPendingMs: 100, // Show pending UI after 100ms to avoid flashes
-    defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
+    defaultErrorComponent: RouteError,
     defaultNotFoundComponent: () => <p>not found</p>,
   })
 

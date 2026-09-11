@@ -1,3 +1,11 @@
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+convex/_generated/
+src/generated/
+src/routeTree.gen.ts
+.context/
+.wrangler/
+.tanstack/
+dist/
+node_modules/

@@ -11,7 +11,7 @@ import { motion } from 'motion/react'
 import { useMemo } from 'react'
 
 import { GameCard } from './game-card'
-import { MYSTERY_CARD_ID } from './mystery-card-stack'
+import { MYSTERY_CARD_ID } from './constants'
 import { DraggableMysteryCard } from './round-timeline-card'
 import { TimelineCardWrapper } from './timeline-card-wrapper'
 import { TimelineDirectionLabel } from './timeline-direction-label'

@@ -3,6 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMutation } from 'convex/react'
 import { useEffect, useState } from 'react'
 import { api } from '../../convex/_generated/api'
+import type { GameData, TimelineData } from '@/components/play/types'
 import {
   FinishedView,
   GameControlsBar,
@@ -25,7 +26,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useSyncGameToStore } from '@/hooks/use-sync-game-to-store'
+import { PlayGameProvider } from '@/stores/play-game-provider'
 import { useTriggerExitAnimation } from '@/stores/play-game-store'
 
 export const Route = createFileRoute('/play/$joinCode')({
@@ -34,11 +35,15 @@ export const Route = createFileRoute('/play/$joinCode')({
       getGameByJoinCodeQuery(params.joinCode),
     )
   },
-  component: GamePage,
+  component: GameRoute,
 })
 
-function GamePage() {
+function GameRoute() {
   const { joinCode } = Route.useParams()
+  return <GamePage key={joinCode} joinCode={joinCode} />
+}
+
+function GamePage({ joinCode }: { joinCode: string }) {
   const { data: game } = useSuspenseQuery(getGameByJoinCodeQuery(joinCode))
   const { data: session, isPending: isSessionPending } = authClient.useSession()
   const joinByCode = useMutation(api.games.joinByCode)
@@ -158,17 +163,26 @@ function GamePage() {
 }
 
 // Separate component for active game to use suspense query for timelines
-function ActiveGameView({
-  game,
-}: {
-  game: NonNullable<typeof api.games.get._returnType>
-}) {
+function ActiveGameView({ game }: { game: GameData }) {
   const { data: timelines } = useSuspenseQuery(getAllTimelinesQuery(game._id))
-  const timelineData = timelines ?? []
-  const triggerExitAnimation = useTriggerExitAnimation()
+  const timelineData = timelines ?? emptyTimelines
+  return (
+    <PlayGameProvider key={game._id} game={game} timelines={timelineData}>
+      <ActiveGameContent game={game} timelineData={timelineData} />
+    </PlayGameProvider>
+  )
+}
 
-  // Sync game and timeline data to Zustand store
-  useSyncGameToStore(game, timelineData)
+const emptyTimelines: Array<TimelineData> = []
+
+function ActiveGameContent({
+  game,
+  timelineData,
+}: {
+  game: GameData
+  timelineData: Array<TimelineData>
+}) {
+  const triggerExitAnimation = useTriggerExitAnimation()
 
   const handleBeforeResolve = async () => {
     await triggerExitAnimation()

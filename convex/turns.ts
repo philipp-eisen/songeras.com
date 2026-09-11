@@ -1,5 +1,15 @@
 import { v } from 'convex/values'
+import {
+  computeValidInsertionIndices,
+  findCorrectInsertionIndex,
+  isValidSlotIndex,
+} from '../shared/game-rules'
 import { mutation } from './_generated/server'
+import {
+  requireGame,
+  requireIdentity,
+  verifyCanActForPlayer,
+} from './lib/gameAccess'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
 
@@ -7,41 +17,9 @@ import type { MutationCtx } from './_generated/server'
 // Types
 // ===========================================
 
-type GamePlayer = Doc<'gamePlayers'>
 type Game = Doc<'games'>
 type GameCard = Doc<'gameCards'>
 type TimelineEntry = Doc<'timelineEntries'>
-
-// ===========================================
-// Authorization helpers
-// ===========================================
-
-/**
- * Verify the caller can act for the given player seat
- * - For kind:"user" -> caller's userId must match the seat's userId
- * - For kind:"local" -> caller must be the game host
- */
-async function verifyCanActForPlayer(
-  ctx: MutationCtx,
-  game: Game,
-  player: GamePlayer,
-): Promise<void> {
-  const identity = await ctx.auth.getUserIdentity()
-  if (!identity) {
-    throw new Error('Not authenticated')
-  }
-
-  if (player.kind === 'user') {
-    if (player.userId !== identity.subject) {
-      throw new Error('You cannot act for this player')
-    }
-  } else {
-    // Local seat - only host can act
-    if (game.hostUserId !== identity.subject) {
-      throw new Error('Only the host can act for local players')
-    }
-  }
-}
 
 // ===========================================
 // Timeline helpers
@@ -56,10 +34,8 @@ async function getPlayerTimeline(
 ): Promise<Array<{ entry: TimelineEntry; card: GameCard }>> {
   const entries = await ctx.db
     .query('timelineEntries')
-    .withIndex('by_playerId', (q) => q.eq('playerId', playerId))
+    .withIndex('by_playerId_and_position', (q) => q.eq('playerId', playerId))
     .collect()
-
-  entries.sort((a, b) => a.position - b.position)
 
   const result: Array<{ entry: TimelineEntry; card: GameCard }> = []
   for (const entry of entries) {
@@ -70,60 +46,6 @@ async function getPlayerTimeline(
   }
 
   return result
-}
-
-/**
- * Compute valid insertion indices for a card with the given year.
- * Returns all valid indices where the card can be placed.
- *
- * Rules:
- * - Timeline is sorted by release year (ascending)
- * - A card can go before any card with year >= its year
- * - A card can go after any card with year <= its year
- * - If years are equal, adjacent placement is valid
- */
-function computeValidInsertionIndices(
-  timeline: Array<{ releaseYear: number }>,
-  newCardYear: number,
-): Array<number> {
-  const validIndices: Array<number> = []
-
-  // Check each possible insertion point (0 to timeline.length inclusive)
-  for (let i = 0; i <= timeline.length; i++) {
-    const yearBefore = i > 0 ? timeline[i - 1].releaseYear : -Infinity
-    const yearAfter = i < timeline.length ? timeline[i].releaseYear : Infinity
-
-    // Valid if: yearBefore <= newCardYear <= yearAfter
-    if (yearBefore <= newCardYear && newCardYear <= yearAfter) {
-      validIndices.push(i)
-    }
-  }
-
-  return validIndices
-}
-
-/**
- * Find the correct insertion index for a card (for auto-placement)
- * Uses binary search to find the right position
- */
-function findCorrectInsertionIndex(
-  timeline: Array<{ releaseYear: number }>,
-  newCardYear: number,
-): number {
-  // Find the first position where the card fits
-  let low = 0
-  let high = timeline.length
-
-  while (low < high) {
-    const mid = Math.floor((low + high) / 2)
-    if (timeline[mid].releaseYear <= newCardYear) {
-      low = mid + 1
-    } else {
-      high = mid
-    }
-  }
-
-  return low
 }
 
 /**
@@ -139,10 +61,8 @@ async function insertCardIntoTimeline(
   // Get current timeline
   const entries = await ctx.db
     .query('timelineEntries')
-    .withIndex('by_playerId', (q) => q.eq('playerId', playerId))
+    .withIndex('by_playerId_and_position', (q) => q.eq('playerId', playerId))
     .collect()
-
-  entries.sort((a, b) => a.position - b.position)
 
   // Shift entries at and after insertIndex
   for (const entry of entries) {
@@ -177,28 +97,23 @@ async function drawNextCard(
   ctx: MutationCtx,
   gameId: Id<'games'>,
 ): Promise<GameCard | null> {
-  // Collect all deck cards and sort by deckOrder to get the next card
-  const deckCards = await ctx.db
+  const nextCard = await ctx.db
     .query('gameCards')
-    .withIndex('by_gameId_and_state', (q) =>
-      q.eq('gameId', gameId).eq('state', 'deck'),
+    .withIndex('by_gameId_and_state_and_deckOrder', (q) =>
+      q.eq('gameId', gameId).eq('state', 'deck').gt('deckOrder', undefined),
     )
-    .collect()
+    .first()
 
-  if (deckCards.length === 0) {
-    return null
-  }
-
-  // Sort by deckOrder ascending (lower numbers drawn first)
-  // Cards without deckOrder should be last (shouldn't happen in normal flow)
-  deckCards.sort((a, b) => {
-    if (a.deckOrder === undefined && b.deckOrder === undefined) return 0
-    if (a.deckOrder === undefined) return 1
-    if (b.deckOrder === undefined) return -1
-    return a.deckOrder - b.deckOrder
-  })
-
-  return deckCards[0]
+  // Legacy cards without an order come after all ordered cards.
+  return (
+    nextCard ??
+    ctx.db
+      .query('gameCards')
+      .withIndex('by_gameId_and_state_and_deckOrder', (q) =>
+        q.eq('gameId', gameId).eq('state', 'deck').eq('deckOrder', undefined),
+      )
+      .first()
+  )
 }
 
 /**
@@ -229,10 +144,7 @@ export const skipRound = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (!game.useTokens) {
       throw new Error('Tokens are not enabled for this game')
@@ -282,7 +194,10 @@ export const skipRound = mutation({
     }
 
     // Update new card state
-    await ctx.db.patch('gameCards', newCard._id, { state: 'inRound' })
+    await ctx.db.patch('gameCards', newCard._id, {
+      state: 'inRound',
+      deckOrder: undefined,
+    })
 
     // Update round with new card (keep same active player, clear bets)
     await ctx.db.patch('games', args.gameId, {
@@ -311,10 +226,7 @@ export const placeCard = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     // Allow placement during both awaitingPlacement and awaitingReveal (for repositioning)
     if (game.phase !== 'awaitingPlacement' && game.phase !== 'awaitingReveal') {
@@ -337,7 +249,7 @@ export const placeCard = mutation({
 
     // Validate insert index is within bounds
     const timeline = await getPlayerTimeline(ctx, activePlayer._id)
-    if (args.insertIndex < 0 || args.insertIndex > timeline.length) {
+    if (!isValidSlotIndex(args.insertIndex, timeline.length)) {
       throw new Error('Invalid insertion index')
     }
 
@@ -366,10 +278,7 @@ export const placeBet = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (!game.useTokens) {
       throw new Error('Tokens are not enabled for this game')
@@ -419,7 +328,7 @@ export const placeBet = mutation({
     const timeline = await getPlayerTimeline(ctx, activePlayer._id)
 
     // Slot index represents where the bettor thinks the card should go
-    if (args.slotIndex < 0 || args.slotIndex > timeline.length) {
+    if (!isValidSlotIndex(args.slotIndex, timeline.length)) {
       throw new Error('Invalid slot index')
     }
 
@@ -464,10 +373,7 @@ export const revealCard = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (game.phase !== 'awaitingReveal') {
       throw new Error('Cannot reveal in current phase')
@@ -478,10 +384,7 @@ export const revealCard = mutation({
     }
 
     // Either active player or host can trigger reveal
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
     const isHost = game.hostUserId === identity.subject
     const activePlayer = await ctx.db.get(
@@ -516,10 +419,7 @@ export const claimGuessToken = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (!game.useTokens) {
       throw new Error('Tokens are not enabled for this game')
@@ -586,10 +486,7 @@ export const resolveRound = mutation({
     winnerId: v.optional(v.id('gamePlayers')),
   }),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (game.phase !== 'revealed') {
       throw new Error('Cannot resolve in current phase')
@@ -600,10 +497,7 @@ export const resolveRound = mutation({
     }
 
     // Either active player or host can trigger resolve
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
     const isHost = game.hostUserId === identity.subject
     const activePlayer = await ctx.db.get(
@@ -758,7 +652,10 @@ export const resolveRound = mutation({
         }
 
         // Update card state to inRound
-        await ctx.db.patch('gameCards', nextCard._id, { state: 'inRound' })
+        await ctx.db.patch('gameCards', nextCard._id, {
+          state: 'inRound',
+          deckOrder: undefined,
+        })
 
         // Continue to next turn with card already drawn
         await ctx.db.patch('games', args.gameId, {
@@ -798,10 +695,7 @@ export const tradeTokensForCard = mutation({
     insertedAt: v.number(),
   }),
   handler: async (ctx, args) => {
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (!game.useTokens) {
       throw new Error('Tokens are not enabled for this game')

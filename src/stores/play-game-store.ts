@@ -1,11 +1,12 @@
-import { create } from 'zustand'
-import { subscribeWithSelector } from 'zustand/middleware'
+import { createContext, useContext } from 'react'
+import { useStore } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 import type {
   GameData,
   PlayerData,
   TimelineData,
 } from '@/components/play/types'
-import { MYSTERY_CARD_ID } from '@/components/play/mystery-card-stack'
+import { MYSTERY_CARD_ID } from '@/components/play/constants'
 
 // ============================================
 // Types
@@ -50,8 +51,7 @@ interface PlayGameState {
 
 interface PlayGameActions {
   // Sync actions (called when React Query data changes)
-  setGame: (game: GameData | null) => void
-  setTimelines: (timelines: Array<TimelineData>) => void
+  syncGame: (game: GameData, timelines: Array<TimelineData>) => void
 
   // DnD actions
   setDndItems: (items: Array<string>) => void
@@ -141,44 +141,41 @@ const computeInitialDndItems = (
 // Store
 // ============================================
 
-export const usePlayGameStore = create<PlayGameStore>()(
-  subscribeWithSelector((set, get) => ({
-    // Initial state
-    game: null,
-    timelines: [],
+export function createPlayGameStore(
+  initialGame: GameData,
+  initialTimelines: Array<TimelineData>,
+) {
+  let pendingActions = 0
+  return createStore<PlayGameStore>()((set, get) => ({
+    game: initialGame,
+    timelines: initialTimelines,
     dnd: {
-      items: [],
+      items: computeInitialDndItems(initialGame, initialTimelines),
       activeId: null,
       wasExternalDrag: false,
     },
-    action: {
-      loading: false,
-      error: null,
-    },
+    action: { loading: false, error: null },
     isExiting: false,
-    derived: {
-      activePlayer: undefined,
-      isActivePlayer: false,
-      myPlayer: undefined,
-      isHost: false,
-      activePlayerTimeline: undefined,
-    },
+    derived: computeDerivedState(initialGame, initialTimelines),
 
-    // Sync actions - only update game/timelines and derived state
-    // DnD state is managed by effects in GameControlsBar to avoid circular updates
-    setGame: (game) => {
-      const { timelines } = get()
+    syncGame: (nextGame, nextTimelines) => {
+      const previous = get()
+      const roundChanged =
+        previous.game?._id !== nextGame._id ||
+        previous.game.currentRound?.cardId !== nextGame.currentRound?.cardId
       set({
-        game,
-        derived: computeDerivedState(game, timelines),
-      })
-    },
-
-    setTimelines: (timelines) => {
-      const { game } = get()
-      set({
-        timelines,
-        derived: computeDerivedState(game, timelines),
+        game: nextGame,
+        timelines: nextTimelines,
+        derived: computeDerivedState(nextGame, nextTimelines),
+        ...(roundChanged && {
+          dnd: {
+            items: computeInitialDndItems(nextGame, nextTimelines),
+            activeId: null,
+            wasExternalDrag: false,
+          },
+          isExiting: false,
+          action: { ...previous.action, error: null },
+        }),
       })
     },
 
@@ -208,6 +205,7 @@ export const usePlayGameStore = create<PlayGameStore>()(
 
     // Action state
     wrapAction: async (action) => {
+      pendingActions += 1
       set({ action: { loading: true, error: null } })
       try {
         const result = await action()
@@ -215,13 +213,17 @@ export const usePlayGameStore = create<PlayGameStore>()(
       } catch (err) {
         set({
           action: {
-            loading: false,
+            loading: pendingActions > 1,
             error: err instanceof Error ? err.message : 'Action failed',
           },
         })
+        set({ isExiting: false })
         throw err
       } finally {
-        set((state) => ({ action: { ...state.action, loading: false } }))
+        pendingActions -= 1
+        set((state) => ({
+          action: { ...state.action, loading: pendingActions > 0 },
+        }))
       }
     },
 
@@ -236,8 +238,18 @@ export const usePlayGameStore = create<PlayGameStore>()(
         setTimeout(resolve, 400)
       })
     },
-  })),
-)
+  }))
+}
+
+export const PlayGameStoreContext = createContext<ReturnType<
+  typeof createPlayGameStore
+> | null>(null)
+
+export function usePlayGameStore<T>(selector: (state: PlayGameStore) => T): T {
+  const store = useContext(PlayGameStoreContext)
+  if (!store) throw new Error('PlayGameProvider is missing')
+  return useStore(store, selector)
+}
 
 // ============================================
 // Selector Hooks

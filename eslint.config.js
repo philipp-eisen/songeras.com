@@ -12,6 +12,10 @@ export default [
       '**/build/**',
       '**/.vinxi/**',
       '**/.output/**',
+      '**/.context/**',
+      '**/.wrangler/**',
+      '**/.tanstack/**',
+      '**/src/generated/**',
 
       // Convex generated files
       '**/convex/_generated/**',

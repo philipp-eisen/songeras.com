@@ -1,4 +1,5 @@
 import { v } from 'convex/values'
+import { playlistStatusValidator } from './lib/validators'
 import { internalMutation, internalQuery } from './_generated/server'
 import type { Doc } from './_generated/dataModel'
 
@@ -47,12 +48,7 @@ export const getPlaylist = internalQuery({
   returns: v.union(
     v.object({
       _id: v.id('playlists'),
-      status: v.union(
-        v.literal('importing'),
-        v.literal('processing'),
-        v.literal('ready'),
-        v.literal('failed'),
-      ),
+      status: playlistStatusValidator,
       totalTracks: v.number(),
       readyTracks: v.number(),
       unmatchedTracks: v.number(),
@@ -93,8 +89,12 @@ export const markTrackReady = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const track = await ctx.db.get('playlistTracks', args.trackId)
+    if (!track || track.status !== 'pending') return null
+
     await ctx.db.patch('playlistTracks', args.trackId, {
       status: 'ready',
+      unmatchedReason: undefined,
       appleMusicId: args.appleMusicId,
       title: args.title,
       artistNames: args.artistNames,
@@ -117,6 +117,9 @@ export const markTrackUnmatched = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const track = await ctx.db.get('playlistTracks', args.trackId)
+    if (!track || track.status !== 'pending') return null
+
     await ctx.db.patch('playlistTracks', args.trackId, {
       status: 'unmatched',
       unmatchedReason: args.reason,
@@ -157,6 +160,7 @@ export const updatePlaylistCounts = internalMutation({
     // Update playlist
     await ctx.db.patch('playlists', args.playlistId, {
       status: newStatus,
+      totalTracks: allTracks.length,
       readyTracks: readyCount,
       unmatchedTracks: unmatchedCount,
     })

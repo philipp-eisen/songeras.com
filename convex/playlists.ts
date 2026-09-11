@@ -1,4 +1,10 @@
 import { v } from 'convex/values'
+import { preserveTrackForGames } from './lib/gameCards'
+import {
+  playlistSourceValidator,
+  playlistStatusValidator,
+  trackStatusValidator,
+} from './lib/validators'
 import { mutation, query } from './_generated/server'
 
 /**
@@ -10,19 +16,14 @@ export const listMine = query({
   returns: v.array(
     v.object({
       _id: v.id('playlists'),
-      source: v.union(v.literal('spotify'), v.literal('appleMusic')),
+      source: playlistSourceValidator,
       sourcePlaylistId: v.string(),
       name: v.string(),
       description: v.optional(v.string()),
       imageUrl: v.optional(v.string()),
       importedAt: v.number(),
       // Processing status
-      status: v.union(
-        v.literal('importing'),
-        v.literal('processing'),
-        v.literal('ready'),
-        v.literal('failed'),
-      ),
+      status: playlistStatusValidator,
       totalTracks: v.number(),
       readyTracks: v.number(),
       unmatchedTracks: v.number(),
@@ -67,16 +68,11 @@ export const get = query({
   returns: v.union(
     v.object({
       _id: v.id('playlists'),
-      source: v.union(v.literal('spotify'), v.literal('appleMusic')),
+      source: playlistSourceValidator,
       name: v.string(),
       description: v.optional(v.string()),
       imageUrl: v.optional(v.string()),
-      status: v.union(
-        v.literal('importing'),
-        v.literal('processing'),
-        v.literal('ready'),
-        v.literal('failed'),
-      ),
+      status: playlistStatusValidator,
       totalTracks: v.number(),
       readyTracks: v.number(),
       unmatchedTracks: v.number(),
@@ -84,11 +80,7 @@ export const get = query({
         v.object({
           _id: v.id('playlistTracks'),
           position: v.number(),
-          status: v.union(
-            v.literal('pending'),
-            v.literal('ready'),
-            v.literal('unmatched'),
-          ),
+          status: trackStatusValidator,
           title: v.string(),
           artistNames: v.array(v.string()),
           releaseYear: v.optional(v.number()),
@@ -119,9 +111,6 @@ export const get = query({
         q.eq('playlistId', args.playlistId),
       )
       .collect()
-
-    // Sort by position (in case index doesn't guarantee order)
-    allTracks.sort((a, b) => a.position - b.position)
 
     // Filter to ready tracks unless includeAllTracks is true
     const tracks = args.includeAllTracks
@@ -198,7 +187,8 @@ export const removeTrack = mutation({
 
     await ctx.db.patch('playlists', playlist._id, updatedCounts)
 
-    // Delete the track
+    // Preserve song data used by existing games before deleting the source.
+    await preserveTrackForGames(ctx, track)
     await ctx.db.delete('playlistTracks', args.trackId)
 
     // Re-order remaining tracks to maintain consecutive positions
@@ -209,8 +199,7 @@ export const removeTrack = mutation({
       )
       .collect()
 
-    // Sort by position and update positions to be consecutive
-    remainingTracks.sort((a, b) => a.position - b.position)
+    // The index returns tracks in position order.
     for (let i = 0; i < remainingTracks.length; i++) {
       if (remainingTracks[i].position !== i) {
         await ctx.db.patch('playlistTracks', remainingTracks[i]._id, {

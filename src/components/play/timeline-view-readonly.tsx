@@ -1,11 +1,11 @@
 import { motion } from 'motion/react'
 import { useMemo } from 'react'
+import { isPlacementCorrect } from '../../../shared/game-rules'
 import { GameCard } from './game-card'
 import { RoundTimelineCard } from './round-timeline-card'
 import { TimelineCardWrapper } from './timeline-card-wrapper'
 import { TimelineDirectionLabel } from './timeline-direction-label'
 import { TimelineRail } from './timeline-rail'
-import { isPlacementCorrect } from './placement-utils'
 
 import type { ReactNode } from 'react'
 import type { CardData, GameData, TimelineData } from './types'
