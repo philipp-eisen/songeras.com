@@ -33,7 +33,7 @@ interface DerivedGameState {
 
 interface PlayGameState {
   // Source data (synced from React Query)
-  game: GameData | null
+  game: GameData
   timelines: Array<TimelineData>
 
   // DnD state
@@ -74,19 +74,9 @@ type PlayGameStore = PlayGameState & PlayGameActions
 // ============================================
 
 const computeDerivedState = (
-  game: GameData | null,
+  game: GameData,
   timelines: Array<TimelineData>,
 ): DerivedGameState => {
-  if (!game) {
-    return {
-      activePlayer: undefined,
-      isActivePlayer: false,
-      myPlayer: undefined,
-      isHost: false,
-      activePlayerTimeline: undefined,
-    }
-  }
-
   const activePlayer = game.players.find(
     (p) => p.seatIndex === game.currentTurnSeatIndex,
   )
@@ -112,11 +102,9 @@ const computeDerivedState = (
 // ============================================
 
 const computeInitialDndItems = (
-  game: GameData | null,
+  game: GameData,
   timelines: Array<TimelineData>,
 ): Array<string> => {
-  if (!game) return []
-
   const activePlayer = game.players.find(
     (p) => p.seatIndex === game.currentTurnSeatIndex,
   )
@@ -161,7 +149,7 @@ export function createPlayGameStore(
     syncGame: (nextGame, nextTimelines) => {
       const previous = get()
       const roundChanged =
-        previous.game?._id !== nextGame._id ||
+        previous.game._id !== nextGame._id ||
         previous.game.currentRound?.cardId !== nextGame.currentRound?.cardId
       set({
         game: nextGame,

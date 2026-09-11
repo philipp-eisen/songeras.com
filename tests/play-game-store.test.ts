@@ -92,7 +92,7 @@ describe('game state', () => {
     expect(store.getState().action.loading).toBe(false)
   })
 
-  it('restores the timeline after a failed round action', async () => {
+  it('clears loading and exit animation after a failed round action', async () => {
     const { store } = setupStore()
     store.getState().setIsExiting(true)
     await expect(

@@ -158,9 +158,17 @@ it('ignores late processing results after track deletion or a completed match', 
     trackId: ready._id,
     reason: 'Duplicate failure',
   })
-  expect(
-    (await host.query(api.playlists.get, { playlistId }))?.tracks.find(
-      (track) => track._id === ready._id,
-    )?.status,
-  ).toBe('ready')
+  const updated = await host.query(api.playlists.get, {
+    playlistId,
+    includeAllTracks: true,
+  })
+  expect(updated?.tracks.some((track) => track._id === removed._id)).toBe(false)
+  expect(updated).toMatchObject({
+    totalTracks: 15,
+    readyTracks: 15,
+    unmatchedTracks: 0,
+  })
+  expect(updated?.tracks.find((track) => track._id === ready._id)?.status).toBe(
+    'ready',
+  )
 })

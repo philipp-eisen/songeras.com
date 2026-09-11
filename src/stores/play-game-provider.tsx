@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { PlayGameStoreContext, createPlayGameStore } from './play-game-store'
 import type { ReactNode } from 'react'
 import type { GameData, TimelineData } from '@/components/play/types'
@@ -14,7 +14,7 @@ export function PlayGameProvider({
 }) {
   const [store] = useState(() => createPlayGameStore(game, timelines))
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     store.getState().syncGame(game, timelines)
   }, [store, game, timelines])
 
