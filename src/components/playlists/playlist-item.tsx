@@ -6,21 +6,16 @@ import {
   WarningIcon,
   XCircleIcon,
 } from '@phosphor-icons/react'
+import type { api } from '../../../convex/_generated/api'
+import type { FunctionReturnType } from 'convex/server'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
-export interface PlaylistData {
-  _id: string
-  source: 'spotify' | 'appleMusic'
-  name: string
-  imageUrl?: string
-  status: 'importing' | 'processing' | 'ready' | 'failed'
-  totalTracks: number
-  readyTracks: number
-  unmatchedTracks: number
-}
+export type PlaylistData = FunctionReturnType<
+  typeof api.playlists.listMine
+>[number]
 
 interface PlaylistItemProps {
   playlist: PlaylistData

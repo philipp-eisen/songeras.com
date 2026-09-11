@@ -32,6 +32,8 @@ export interface UsePreviewPlaybackReturn {
  */
 export function usePreviewPlayback(): UsePreviewPlaybackReturn {
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const currentUrlRef = useRef<string | null>(null)
+  const playbackRequestRef = useRef(0)
   const [currentUrl, setCurrentUrl] = useState<string | null>(null)
   const [state, setState] = useState<PreviewPlaybackState>({
     isPlaying: false,
@@ -56,12 +58,17 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
       setState((prev) => ({
         ...prev,
         isLoading: false,
-        duration: audio.duration || 0,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
       }))
     }
 
     const handlePlay = () => {
-      setState((prev) => ({ ...prev, isPlaying: true }))
+      setState((prev) => ({
+        ...prev,
+        isPlaying: true,
+        isLoading: false,
+        error: null,
+      }))
     }
 
     const handlePause = () => {
@@ -74,6 +81,7 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
         isPlaying: false,
         currentTime: 0,
       }))
+      currentUrlRef.current = null
       setCurrentUrl(null)
     }
 
@@ -87,7 +95,7 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
     const handleDurationChange = () => {
       setState((prev) => ({
         ...prev,
-        duration: audio.duration || 0,
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
       }))
     }
 
@@ -142,62 +150,84 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
       audio.removeEventListener('error', handleError)
 
       // Stop and clean up
+      playbackRequestRef.current += 1
       audio.pause()
-      audio.src = ''
+      audio.removeAttribute('src')
+      audio.load()
       audioRef.current = null
+      currentUrlRef.current = null
     }
   }, [])
 
   /**
    * Play a preview URL
    */
-  const play = useCallback(
-    async (url: string) => {
-      const audio = audioRef.current
-      if (!audio) return
+  const play = useCallback(async (url: string) => {
+    const audio = audioRef.current
+    if (!audio) return
 
-      // If it's a different URL, load the new track
-      if (url !== currentUrl) {
-        audio.src = url
-        setCurrentUrl(url)
+    const requestId = ++playbackRequestRef.current
+    setState((prev) => ({ ...prev, isLoading: true, error: null }))
+
+    // If it's a different URL, load the new track
+    if (url !== currentUrlRef.current) {
+      audio.src = url
+      currentUrlRef.current = url
+      setCurrentUrl(url)
+      setState((prev) => ({
+        ...prev,
+        isPlaying: false,
+        currentTime: 0,
+        duration: 0,
+        error: null,
+      }))
+    }
+
+    try {
+      await audio.play()
+      if (
+        requestId === playbackRequestRef.current &&
+        audioRef.current === audio
+      ) {
+        setState((prev) => ({ ...prev, isLoading: false }))
+      }
+    } catch (error) {
+      if (
+        requestId !== playbackRequestRef.current ||
+        audioRef.current !== audio
+      )
+        return
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setState((prev) => ({ ...prev, isLoading: false }))
+        return
+      }
+      // Handle autoplay restrictions
+      if (error instanceof DOMException && error.name === 'NotAllowedError') {
         setState((prev) => ({
           ...prev,
-          currentTime: 0,
-          duration: 0,
-          error: null,
+          isLoading: false,
+          error: 'Playback blocked. Tap to play.',
+        }))
+      } else {
+        console.error('[PreviewPlayback] Play error:', error)
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: 'Failed to start playback',
         }))
       }
-
-      try {
-        await audio.play()
-      } catch (error) {
-        // Handle autoplay restrictions
-        if (error instanceof DOMException && error.name === 'NotAllowedError') {
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            error: 'Playback blocked. Tap to play.',
-          }))
-        } else {
-          console.error('[PreviewPlayback] Play error:', error)
-          setState((prev) => ({
-            ...prev,
-            isLoading: false,
-            error: 'Failed to start playback',
-          }))
-        }
-      }
-    },
-    [currentUrl],
-  )
+    }
+  }, [])
 
   /**
    * Pause playback
    */
   const pause = useCallback(() => {
+    playbackRequestRef.current += 1
     const audio = audioRef.current
     if (audio) {
       audio.pause()
+      setState((prev) => ({ ...prev, isPlaying: false, isLoading: false }))
     }
   }, [])
 
@@ -205,11 +235,14 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
    * Stop playback and reset
    */
   const stop = useCallback(() => {
+    playbackRequestRef.current += 1
     const audio = audioRef.current
     if (audio) {
       audio.pause()
       audio.currentTime = 0
-      audio.src = ''
+      audio.removeAttribute('src')
+      audio.load()
+      currentUrlRef.current = null
       setCurrentUrl(null)
       setState((prev) => ({
         ...prev,
@@ -217,6 +250,7 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
         isLoading: false,
         currentTime: 0,
         duration: 0,
+        error: null,
       }))
     }
   }, [])
@@ -226,8 +260,8 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
    */
   const seek = useCallback((time: number) => {
     const audio = audioRef.current
-    if (audio) {
-      audio.currentTime = Math.max(0, Math.min(time, audio.duration || 0))
+    if (audio && Number.isFinite(time) && Number.isFinite(audio.duration)) {
+      audio.currentTime = Math.max(0, Math.min(time, audio.duration))
     }
   }, [])
 
@@ -269,7 +303,7 @@ export function usePreviewPlayback(): UsePreviewPlaybackReturn {
  * Format seconds as MM:SS
  */
 export function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || isNaN(seconds)) return '0:00'
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
 
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)

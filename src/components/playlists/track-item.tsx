@@ -8,8 +8,9 @@ import {
   TrashIcon,
   XCircleIcon,
 } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 import { api } from '../../../convex/_generated/api'
-import type { Id } from '../../../convex/_generated/dataModel'
+import type { FunctionReturnType } from 'convex/server'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -24,18 +25,9 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 
-export interface TrackData {
-  _id: Id<'playlistTracks'>
-  position: number
-  status: 'pending' | 'ready' | 'unmatched'
-  title: string
-  artistNames: Array<string>
-  releaseYear?: number
-  previewUrl?: string
-  imageUrl?: string
-  spotifyTrackId?: string
-  unmatchedReason?: string
-}
+export type TrackData = NonNullable<
+  FunctionReturnType<typeof api.playlists.get>
+>['tracks'][number]
 
 interface TrackItemProps {
   track: TrackData
@@ -50,7 +42,9 @@ export function TrackItem({ track }: TrackItemProps) {
     try {
       await removeTrack({ trackId: track._id })
     } catch (error) {
-      console.error('Failed to remove track:', error)
+      toast.error(
+        error instanceof Error ? error.message : 'Could not remove the track',
+      )
       setIsRemoving(false)
     }
   }
@@ -164,6 +158,7 @@ export function TrackItem({ track }: TrackItemProps) {
               size="icon"
               className="shrink-0 text-muted-foreground hover:text-destructive"
               disabled={isRemoving}
+              aria-label={`Remove ${track.title}`}
             />
           }
         >

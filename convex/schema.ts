@@ -1,68 +1,17 @@
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
 
-// Game phases for the state machine
-const gamePhaseValidator = v.union(
-  v.literal('lobby'),
-  v.literal('awaitingPlacement'),
-  v.literal('awaitingReveal'),
-  v.literal('revealed'),
-  v.literal('finished'),
-)
-
-// Game modes
-const gameModeValidator = v.union(v.literal('hostOnly'), v.literal('sidecars'))
-
-// Card states in the deck
-const cardStateValidator = v.union(
-  v.literal('deck'), // In the draw pile
-  v.literal('inRound'), // Currently being played this round
-  v.literal('timeline'), // Placed in a player's timeline
-  v.literal('discarded'), // Removed from play
-)
-
-// Player seat types
-const playerKindValidator = v.union(
-  v.literal('local'), // Host-controlled local seat
-  v.literal('user'), // Authenticated user (Google or guest)
-)
-
-// Bet record for current round
-const betValidator = v.object({
-  bettorPlayerId: v.id('gamePlayers'),
-  slotIndex: v.number(), // Where the bettor thinks the card should go
-  timestamp: v.number(), // For resolving ties (earliest wins)
-})
-
-// Current round state stored on the game
-const currentRoundValidator = v.object({
-  cardId: v.id('gameCards'),
-  activePlayerId: v.id('gamePlayers'),
-  placementIndex: v.optional(v.number()), // Where the active player placed the card
-  bets: v.array(betValidator),
-  tokenClaimers: v.array(v.id('gamePlayers')), // Players who claimed a guess token this round
-})
-
-// Playlist source provider
-const playlistSourceValidator = v.union(
-  v.literal('spotify'),
-  v.literal('appleMusic'),
-)
-
-// Playlist processing status
-const playlistStatusValidator = v.union(
-  v.literal('importing'), // Initial import in progress
-  v.literal('processing'), // Matching tracks to Apple Music
-  v.literal('ready'), // All tracks processed, ready for games
-  v.literal('failed'), // Import or processing failed
-)
-
-// Track processing status
-const trackStatusValidator = v.union(
-  v.literal('pending'), // Imported from Spotify, needs Apple match
-  v.literal('ready'), // Matched to Apple Music, playable
-  v.literal('unmatched'), // Couldn't be matched, excluded from games
-)
+import {
+  cardStateValidator,
+  currentRoundValidator,
+  gameModeValidator,
+  gamePhaseValidator,
+  playerKindValidator,
+  playlistSourceValidator,
+  playlistStatusValidator,
+  trackSnapshotValidator,
+  trackStatusValidator,
+} from './lib/validators'
 
 export default defineSchema({
   // ============================================
@@ -88,6 +37,11 @@ export default defineSchema({
     .index('by_ownerUserId', ['ownerUserId'])
     .index('by_ownerUserId_and_sourcePlaylistId', [
       'ownerUserId',
+      'sourcePlaylistId',
+    ])
+    .index('by_ownerUserId_and_source_and_sourcePlaylistId', [
+      'ownerUserId',
+      'source',
       'sourcePlaylistId',
     ]),
 
@@ -167,12 +121,14 @@ export default defineSchema({
   })
     .index('by_gameId', ['gameId'])
     .index('by_gameId_and_seatIndex', ['gameId', 'seatIndex'])
-    .index('by_gameId_and_userId', ['gameId', 'userId']),
+    .index('by_gameId_and_userId', ['gameId', 'userId'])
+    .index('by_userId', ['userId']),
 
   // Card instances for a game (materialized from playlist tracks)
   gameCards: defineTable({
     gameId: v.id('games'),
     trackId: v.id('playlistTracks'), // Reference to the playlist track
+    trackSnapshot: v.optional(trackSnapshotValidator),
     releaseYear: v.number(), // Denormalized for fast validation
     state: cardStateValidator,
     ownerPlayerId: v.optional(v.id('gamePlayers')), // Set when in timeline
@@ -180,6 +136,12 @@ export default defineSchema({
   })
     .index('by_gameId', ['gameId'])
     .index('by_gameId_and_state', ['gameId', 'state'])
+    .index('by_trackId', ['trackId'])
+    .index('by_gameId_and_state_and_deckOrder', [
+      'gameId',
+      'state',
+      'deckOrder',
+    ])
     .index('by_gameId_and_ownerPlayerId', ['gameId', 'ownerPlayerId']),
 
   // Timeline entries: ordered cards in a player's timeline

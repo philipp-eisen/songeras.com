@@ -1,24 +1,16 @@
 import { v } from 'convex/values'
+import { getCardTrack, snapshotTrack } from './lib/gameCards'
 import { mutation, query } from './_generated/server'
+import {
+  gameModeValidator,
+  gamePhaseValidator,
+  playerKindValidator,
+} from './lib/validators'
+import { requireGame, requireIdentity } from './lib/gameAccess'
 import type { Doc, Id } from './_generated/dataModel'
 import type { MutationCtx, QueryCtx } from './_generated/server'
 
-// ===========================================
-// Validators (exported for reuse)
-// ===========================================
-
-export const gameModeValidator = v.union(
-  v.literal('hostOnly'),
-  v.literal('sidecars'),
-)
-
-export const gamePhaseValidator = v.union(
-  v.literal('lobby'),
-  v.literal('awaitingPlacement'),
-  v.literal('awaitingReveal'),
-  v.literal('revealed'),
-  v.literal('finished'),
-)
+import type { Infer } from 'convex/values'
 
 // ===========================================
 // Helper functions
@@ -96,10 +88,7 @@ export const create = mutation({
     joinCode: v.string(),
   }),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
     const userId = identity.subject
     const userName = identity.name ?? 'Host'
@@ -186,15 +175,9 @@ export const addLocalPlayer = mutation({
   },
   returns: v.id('gamePlayers'),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (game.hostUserId !== identity.subject) {
       throw new Error('Only the host can add local players')
@@ -236,10 +219,7 @@ export const removeLocalPlayer = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
     const player = await ctx.db.get('gamePlayers', args.playerId)
     if (!player) {
@@ -358,15 +338,9 @@ export const leave = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (game.phase !== 'lobby') {
       throw new Error('Cannot leave after game has started')
@@ -405,15 +379,9 @@ export const deleteGame = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (game.hostUserId !== identity.subject) {
       throw new Error('Only the host can delete the game')
@@ -456,15 +424,9 @@ export const start = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
+    const identity = await requireIdentity(ctx)
 
-    const game = await ctx.db.get('games', args.gameId)
-    if (!game) {
-      throw new Error('Game not found')
-    }
+    const game = await requireGame(ctx, args.gameId)
 
     if (game.hostUserId !== identity.subject) {
       throw new Error('Only the host can start the game')
@@ -514,12 +476,17 @@ export const start = mutation({
     }
 
     // Build track data with release years (filter out tracks without releaseYear)
-    const trackData = readyTracks
-      .filter((t) => t.releaseYear !== undefined)
-      .map((t) => ({
-        trackId: t._id,
-        releaseYear: t.releaseYear!,
-      }))
+    const trackData = readyTracks.flatMap((track) =>
+      track.releaseYear === undefined
+        ? []
+        : [
+            {
+              trackId: track._id,
+              releaseYear: track.releaseYear,
+              trackSnapshot: snapshotTrack(track),
+            },
+          ],
+    )
 
     if (trackData.length < players.length + 10) {
       throw new Error(`Not enough tracks with release years for a good game`)
@@ -534,9 +501,16 @@ export const start = mutation({
       const cardId = await ctx.db.insert('gameCards', {
         gameId: args.gameId,
         trackId: shuffledTracks[i].trackId,
+        trackSnapshot: shuffledTracks[i].trackSnapshot,
         releaseYear: shuffledTracks[i].releaseYear,
-        state: 'deck',
-        deckOrder: i,
+        state:
+          i < players.length
+            ? 'timeline'
+            : i === players.length
+              ? 'inRound'
+              : 'deck',
+        ownerPlayerId: i < players.length ? players[i]._id : undefined,
+        deckOrder: i > players.length ? i - players.length - 1 : undefined,
       })
       gameCardIds.push(cardId)
     }
@@ -544,13 +518,6 @@ export const start = mutation({
     // Deal 1 starting card to each player's timeline
     for (let i = 0; i < players.length; i++) {
       const cardId = gameCardIds[i]
-
-      // Update card state
-      await ctx.db.patch('gameCards', cardId, {
-        state: 'timeline',
-        ownerPlayerId: players[i]._id,
-        deckOrder: undefined,
-      })
 
       // Create timeline entry
       await ctx.db.insert('timelineEntries', {
@@ -561,20 +528,7 @@ export const start = mutation({
       })
     }
 
-    // Update remaining deck cards' deckOrder (they shift down by players.length)
-    // Skip the first remaining card since we'll use it for the first round
-    for (let i = players.length + 1; i < gameCardIds.length; i++) {
-      await ctx.db.patch('gameCards', gameCardIds[i], {
-        deckOrder: i - players.length - 1,
-      })
-    }
-
-    // Draw the first card for the first player's turn
     const firstRoundCardId = gameCardIds[players.length]
-    await ctx.db.patch('gameCards', firstRoundCardId, {
-      state: 'inRound',
-      deckOrder: undefined,
-    })
 
     // Update game state with first round already set up
     await ctx.db.patch('games', args.gameId, {
@@ -622,7 +576,7 @@ const gameResponseValidator = v.object({
       _id: v.id('gamePlayers'),
       seatIndex: v.number(),
       displayName: v.string(),
-      kind: v.union(v.literal('local'), v.literal('user')),
+      kind: playerKindValidator,
       userId: v.optional(v.string()),
       tokenBalance: v.number(),
       isHostSeat: v.boolean(),
@@ -631,6 +585,7 @@ const gameResponseValidator = v.object({
   ),
   currentRound: v.optional(
     v.object({
+      cardId: v.id('gameCards'),
       activePlayerId: v.id('gamePlayers'),
       placementIndex: v.optional(v.number()),
       bets: v.array(
@@ -655,19 +610,9 @@ const gameResponseValidator = v.object({
 })
 
 // Type for current round info
-type CurrentRoundInfo = {
-  activePlayerId: Id<'gamePlayers'>
-  placementIndex?: number
-  bets: Array<{ bettorPlayerId: Id<'gamePlayers'>; slotIndex: number }>
-  tokenClaimers: Array<Id<'gamePlayers'>>
-  card?: {
-    _id: Id<'gameCards'>
-    title: string
-    artistNames: Array<string>
-    releaseYear: number
-    imageUrl?: string
-  }
-}
+type CurrentRoundInfo = NonNullable<
+  Infer<typeof gameResponseValidator>['currentRound']
+>
 
 /**
  * Helper to build game response data from a game document.
@@ -714,6 +659,7 @@ async function buildGameResponse(
 
   if (game.currentRound) {
     currentRound = {
+      cardId: game.currentRound.cardId,
       activePlayerId: game.currentRound.activePlayerId,
       placementIndex: game.currentRound.placementIndex,
       bets: game.currentRound.bets.map((b) => ({
@@ -727,13 +673,13 @@ async function buildGameResponse(
     if (game.phase === 'revealed') {
       const card = await ctx.db.get('gameCards', game.currentRound.cardId)
       if (card) {
-        const track = await ctx.db.get('playlistTracks', card.trackId)
+        const track = await getCardTrack(ctx, card)
         if (track) {
           currentRound.card = {
             _id: card._id,
             title: track.title,
             artistNames: track.artistNames,
-            releaseYear: track.releaseYear!,
+            releaseYear: card.releaseYear,
             imageUrl: track.imageUrl,
           }
         }
@@ -855,67 +801,36 @@ export const listMine = query({
     // Get games where user is a player (but not host)
     const playerSeats = await ctx.db
       .query('gamePlayers')
-      .withIndex('by_gameId_and_userId')
-      .filter((q) => q.eq(q.field('userId'), identity.subject))
+      .withIndex('by_userId', (q) => q.eq('userId', identity.subject))
       .collect()
 
-    const joinedGameIds = new Set(playerSeats.map((p) => p.gameId))
-
-    const result: Array<{
-      _id: Id<'games'>
-      joinCode: string
-      mode: 'hostOnly' | 'sidecars'
-      phase: Doc<'games'>['phase']
-      playlistName?: string
-      playerCount: number
-      createdAt: number
-      isHost: boolean
-    }> = []
-
-    // Add hosted games
-    for (const game of hostedGames) {
-      const playlist = await ctx.db.get('playlists', game.playlistId)
-      const players = await ctx.db
-        .query('gamePlayers')
-        .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
-        .collect()
-
-      result.push({
-        _id: game._id,
-        joinCode: game.joinCode,
-        mode: game.mode,
-        phase: game.phase,
-        playlistName: playlist?.name,
-        playerCount: players.length,
-        createdAt: game.createdAt,
-        isHost: true,
-      })
-
-      joinedGameIds.delete(game._id) // Remove from joined set to avoid duplicates
-    }
-
-    // Add joined games (where not host)
-    for (const gameId of joinedGameIds) {
+    const games = new Map(hostedGames.map((game) => [game._id, game]))
+    for (const gameId of new Set(playerSeats.map((player) => player.gameId))) {
+      if (games.has(gameId)) continue
       const game = await ctx.db.get('games', gameId)
-      if (!game) continue
-
-      const playlist = await ctx.db.get('playlists', game.playlistId)
-      const players = await ctx.db
-        .query('gamePlayers')
-        .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
-        .collect()
-
-      result.push({
-        _id: game._id,
-        joinCode: game.joinCode,
-        mode: game.mode,
-        phase: game.phase,
-        playlistName: playlist?.name,
-        playerCount: players.length,
-        createdAt: game.createdAt,
-        isHost: false,
-      })
+      if (game) games.set(gameId, game)
     }
+
+    const result = await Promise.all(
+      Array.from(games.values(), async (game) => {
+        const playlist = await ctx.db.get('playlists', game.playlistId)
+        const players = await ctx.db
+          .query('gamePlayers')
+          .withIndex('by_gameId', (q) => q.eq('gameId', game._id))
+          .collect()
+
+        return {
+          _id: game._id,
+          joinCode: game.joinCode,
+          mode: game.mode,
+          phase: game.phase,
+          playlistName: playlist?.name,
+          playerCount: players.length,
+          createdAt: game.createdAt,
+          isHost: game.hostUserId === identity.subject,
+        }
+      }),
+    )
 
     // Sort by creation date (newest first)
     result.sort((a, b) => b.createdAt - a.createdAt)

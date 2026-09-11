@@ -1,3 +1,4 @@
+import { toast } from 'sonner'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMutation } from 'convex/react'
@@ -50,7 +51,9 @@ function GamesPage() {
     try {
       await deleteGame({ gameId })
     } catch (err) {
-      console.error('Failed to delete game:', err)
+      toast.error(
+        err instanceof Error ? err.message : 'Could not delete the game',
+      )
     } finally {
       setDeleting(null)
     }
@@ -130,7 +133,8 @@ function GamesPage() {
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            disabled={deleting === game._id}
+                            disabled={deleting !== null}
+                            aria-label="Game options"
                           >
                             <DotsThreeVerticalIcon
                               weight="duotone"
